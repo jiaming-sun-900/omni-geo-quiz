@@ -1,10 +1,10 @@
 import Globe from "./Globe";
 
 const ENTRIES = [
-  { num: "I.", icon: "🗺️", name: "State Quiz", mode: "state" },
-  { num: "II.", icon: "📍", name: "City Quiz", mode: "city" },
-  { num: "III.", icon: "✏️", name: "Fill in the States", soon: true },
-  { num: "IV.", icon: "🌏", name: "China Mode", soon: true },
+  { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "state" },
+  { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "city" },
+  { num: "III.", icon: "✏️ 🇺🇸", name: "US Fill in the States", soon: true },
+  { num: "IV.", icon: "🌏 🇨🇳", name: "China Mode", soon: true },
 ];
 
 export default function HomeScreen({ onSelectMode }) {
@@ -35,7 +35,7 @@ export default function HomeScreen({ onSelectMode }) {
                 <span className="menu-num">{e.num}</span>
                 <span className="menu-icon">{e.icon}</span>
                 <span className="menu-name">{e.name}</span>
-                <span className="menu-tag">[ENTER →]</span>
+                <span className="menu-tag">[ENTER]</span>
               </button>
             )
           )}

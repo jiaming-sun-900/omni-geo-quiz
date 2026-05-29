@@ -97,7 +97,7 @@
 /* Each entry is a physical push button. Columns: numeral · icon · name · tag */
 .menu-row {
   display: grid;
-  grid-template-columns: 2.4rem 1.8rem 1fr auto;
+  grid-template-columns: 2.4rem 4rem 1fr auto;
   align-items: center;
   gap: 0.85rem;
   width: 100%;
