@@ -12,15 +12,14 @@ export default function ResultsScreen({ score, total, onPlayAgain, onHome }) {
       <h2>Results</h2>
       <div className="score-display">
         <span className="score-big">{score}/{total}</span>
-        <span className="score-pct">{pct}%</span>
       </div>
       <p className="results-message">{message}</p>
       <div className="results-buttons">
-        <button className="btn primary" onClick={onPlayAgain}>
-          Play Again
+        <button className="results-btn results-home" onClick={onPlayAgain}>
+          🔄
         </button>
-        <button className="btn secondary" onClick={onHome}>
-          Home
+        <button className="results-btn results-home" onClick={onHome}>
+          🏠
         </button>
       </div>
     </div>

@@ -326,11 +326,6 @@
   color: #1a1a2e;
 }
 
-.score-pct {
-  font-size: 1.35rem;
-  color: #666;
-}
-
 .results-message {
   font-size: 1.35rem;
   color: #444;
@@ -339,7 +334,31 @@
 
 .results-buttons {
   display: flex;
-  gap: 1rem;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+/* Old-fashioned push button — white fill, black border, soft drop shadow.
+   Both buttons share a fixed size so they sit symmetrically about center. */
+.results-btn {
+  width: 160px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2px solid #1a1a2e;
+  border-radius: 14px;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.15);
+  font-family: inherit;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  cursor: pointer;
+}
+
+.results-home {
+  font-size: 1.8rem;
 }
 
 /* State Quiz — redesigned header (scoped via .state-quiz) */
@@ -399,6 +418,7 @@
   padding: 0.5rem;
   box-sizing: border-box;
   line-height: 1.2;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.15);
 }
 
 button.sq-box {
@@ -428,6 +448,86 @@ button.sq-box:hover {
   display: flex;
   flex-direction: row;
   gap: 0.5rem;
+}
+
+/* Toggle switches — bottom-right corner */
+.sq-toggles {
+  position: absolute;
+  bottom: 1rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid #1a1a2e;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
+
+/* Each row: label on the left, ON/OFF button on the right. Rows stretch to
+   the panel's content width so labels left-align and buttons right-align.
+   Adding another row is just one more .sq-toggle block in the markup. */
+.sq-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.sq-toggle-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+/* Old-fashioned rectangular push button toggle */
+.push-toggle {
+  min-width: 64px;
+  padding: 0.35rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #1a1a2e;
+  background: #e2ddd2;
+  border: 2px solid #1a1a2e;
+  border-radius: 3px;
+  cursor: pointer;
+  /* Raised bevel — light top/left, dark bottom/right */
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.7),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.28);
+  transition: none;
+}
+
+.push-toggle.on {
+  color: #FF4F00;
+  background: #cfc7b6;
+  /* Pressed-in bevel — dark top/left, light bottom/right */
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.32),
+    inset -2px -2px 0 rgba(255, 255, 255, 0.5);
+}
+
+.push-toggle:active {
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.32),
+    inset -2px -2px 0 rgba(255, 255, 255, 0.5);
+}
+
+.push-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Submit button: black "Submit" when empty, signature orange once the
+   user starts typing (enabled). Scoped so the toggles are unaffected. */
+.guess-form .push-toggle {
+  opacity: 1;
+}
+
+.guess-form .push-toggle:not(:disabled) {
+  color: #FF4F00;
 }
 
 /* Push the prompt/input group slightly down for breathing room from the map */

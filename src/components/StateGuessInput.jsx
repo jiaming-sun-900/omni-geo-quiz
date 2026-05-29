@@ -110,7 +110,7 @@ export default function StateGuessInput({ onSubmit, disabled }) {
       </div>
       <button
         type="submit"
-        className="btn primary"
+        className="push-toggle"
         disabled={disabled || !value.trim()}
       >
         Submit

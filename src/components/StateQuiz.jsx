@@ -21,6 +21,9 @@ function Game({ onHome, onRestart, onFinish }) {
   const [score, setScore] = useState(0);
   const [current, setCurrent] = useState(() => pickRound(usedIds.current));
   const [feedback, setFeedback] = useState(null);
+  const [showRivers, setShowRivers] = useState(false);
+  const [showMountains, setShowMountains] = useState(false);
+  const [showBorders, setShowBorders] = useState(false);
   const scoreRef = useRef(0);
 
   const handleGuess = (guess) => {
@@ -66,7 +69,49 @@ function Game({ onHome, onRestart, onFinish }) {
       <USMap
         dotPosition={current.point}
         revealedStateId={feedback ? current.state.id : null}
+        showRivers={showRivers}
+        showMountains={showMountains}
+        showBorders={showBorders}
       />
+
+      <div className="sq-toggles">
+        <div className="sq-toggle">
+          <span className="sq-toggle-label">Rivers</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showRivers}
+            className={`push-toggle ${showRivers ? "on" : ""}`}
+            onClick={() => setShowRivers((v) => !v)}
+          >
+            {showRivers ? "ON" : "OFF"}
+          </button>
+        </div>
+        <div className="sq-toggle">
+          <span className="sq-toggle-label">Mountains</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showMountains}
+            className={`push-toggle ${showMountains ? "on" : ""}`}
+            onClick={() => setShowMountains((v) => !v)}
+          >
+            {showMountains ? "ON" : "OFF"}
+          </button>
+        </div>
+        <div className="sq-toggle">
+          <span className="sq-toggle-label">State Borders</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showBorders}
+            className={`push-toggle ${showBorders ? "on" : ""}`}
+            onClick={() => setShowBorders((v) => !v)}
+          >
+            {showBorders ? "ON" : "OFF"}
+          </button>
+        </div>
+      </div>
 
       <div className="quiz-controls">
         {!feedback ? (
