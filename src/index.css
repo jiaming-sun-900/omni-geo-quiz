@@ -1,0 +1,43 @@
+html {
+  font-size: 19px;
+}
+
+@media (max-width: 900px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #F9F6F0;
+  color: #1a1a2e;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  background: #F9F6F0;
+}
