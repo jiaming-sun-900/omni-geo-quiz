@@ -18,7 +18,7 @@ function pickCity(usedIndices) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function Game({ onHome, onFinish }) {
+function Game({ onHome, onRestart, onFinish }) {
   const usedIndices = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
@@ -56,14 +56,17 @@ function Game({ onHome, onFinish }) {
   }, [feedback]);
 
   return (
-    <div className="quiz-container">
-      <div className="quiz-header">
-        <button className="btn-back" onClick={onHome}>&larr; Home</button>
-        <h2>City Quiz</h2>
-        <div className="quiz-stats">
-          <span>Round {round}/{TOTAL_ROUNDS}</span>
-          <span className="score-badge">Score: {score}</span>
+    <div className="quiz-container state-quiz">
+      <div className="state-quiz-header">
+        <div className="sq-right">
+          <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
+          <div className="sq-box sq-score">Score: {score}</div>
+          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
         </div>
+      </div>
+
+      <div className="sq-bottom-left">
+        <button className="sq-box sq-home sq-emoji" onClick={onHome}>🏠</button>
       </div>
 
       <USMap dotPosition={[current.city.lng, current.city.lat]} />
@@ -99,19 +102,21 @@ export default function CityQuiz({ onHome }) {
   const [gameKey, setGameKey] = useState(0);
   const [finalScore, setFinalScore] = useState(null);
 
+  const restart = () => {
+    setFinalScore(null);
+    setGameKey((k) => k + 1);
+  };
+
   if (finalScore !== null) {
     return (
       <ResultsScreen
         score={finalScore}
         total={TOTAL_ROUNDS}
-        onPlayAgain={() => {
-          setFinalScore(null);
-          setGameKey((k) => k + 1);
-        }}
+        onPlayAgain={restart}
         onHome={onHome}
       />
     );
   }
 
-  return <Game key={gameKey} onHome={onHome} onFinish={setFinalScore} />;
+  return <Game key={gameKey} onHome={onHome} onRestart={restart} onFinish={setFinalScore} />;
 }

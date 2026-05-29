@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-US Geo Quiz — a React + D3.js quiz app with two game modes (State Quiz, City Quiz) testing US geography knowledge. No backend; deployable to GitHub Pages.
+Omni Geo Quiz — a React + D3.js quiz app with two game modes (State Quiz, City Quiz) testing US geography knowledge. No backend; deployable to GitHub Pages.
 
 ## Commands
 
-- `npm run dev` — start Vite dev server (serves at `/us-geo-quiz/` base path)
+- `npm run dev` — start Vite dev server (serves at `/omni-geo-quiz/` base path)
 - `npm run build` — production build to `dist/`
 - `npm run preview` — preview production build locally
 
@@ -40,6 +40,25 @@ It exports `states` (filtered GeoJSON features excluding AK, HI, and territories
 
 **City data** (`data/cities.js`): 52 hardcoded US cities with `{name, lat, lng, state}`. Coordinates are approximate city centers. This is the authoritative city list — add/remove entries here to change the City Quiz pool.
 
+## Design System
+
+The established visual language across all screens. New UI should conform to it.
+
+- **Background**: `#FAF7F4` (warm off-white) throughout every screen.
+- **Buttons** (all interactive buttons): white background, solid black border, hard
+  offset shadow `3px 3px 0px #111` (no blur), `border-radius: 12px`. On hover/press the
+  button shifts 2px down-right and the shadow reduces, giving a physical press feel.
+- **Corner info boxes** (Round, Score, Start Over, Home): equal-size squares using the
+  same button style above. In quizzes they sit in fixed corners — Round/Score/Start Over
+  stacked top-right, Home bottom-left.
+- **Control panel**: a bordered container with the same hard-shadow style; each row has a
+  left-aligned label and a right-aligned ON/OFF button.
+- **ON/OFF toggle buttons**: retro push-button style. OFF state shows black text; ON state
+  shows orange `#F97316` text.
+- **Layout**: every screen uses a no-scroll, full-viewport layout.
+- **Map**: a blank white US continental map rendered with the Albers USA projection — no
+  state borders or labels visible by default.
+
 ## GitHub Pages Deployment
 
-`vite.config.js` sets `base: "/us-geo-quiz/"` for GitHub Pages. The repo name must match this base path.
+`vite.config.js` sets `base: "/omni-geo-quiz/"` for GitHub Pages. The repo name must match this base path.
