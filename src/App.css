@@ -1,70 +1,156 @@
-/* Home Screen */
+/* Home Screen — two columns filling the viewport, no scroll */
 .home-screen {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  width: 100%;
+  height: 100%;
   padding: 2rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #FAF7F4;
 }
 
-.home-screen h1 {
-  font-size: 3rem;
-  font-weight: 700;
-  margin: 0 0 0.5rem;
-  color: #1a1a2e;
-}
-
-.subtitle {
-  color: #666;
-  margin: 0 0 2.75rem;
-  font-size: 1.25rem;
-}
-
-.mode-buttons {
+.home-left {
+  width: 45%;
   display: flex;
-  gap: 1.75rem;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
 }
 
-.mode-btn {
+.home-right {
+  width: 55%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 2.5rem;
+  box-sizing: border-box;
+}
+
+/* Three.js rotating globe — sphere floats on the background, no border/ring */
+.globe-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  padding: 2.25rem 2.75rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 14px;
+  gap: 1.1rem;
+}
+
+.globe-disc {
+  --disc: 552px;
+  width: var(--disc);
+  height: var(--disc);
+  flex-shrink: 0;
+}
+
+/* Soft drop shadow follows the sphere's alpha, so it sits under the globe */
+.globe-disc canvas {
+  display: block;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.28));
+}
+
+/* Reset-view button — matches the app's retro hard-shadow buttons */
+.globe-reset {
   background: #fff;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  width: 480px;
-  height: 240px;
-}
-
-.mode-btn:hover {
-  border-color: #1a1a2e;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.mode-icon {
-  font-size: 2.4rem;
-}
-
-.mode-label {
-  font-size: 1.35rem;
+  border: 2px solid #1a1a1a;
+  border-radius: 8px;
+  box-shadow: 3px 3px 0px #111;
+  font-family: inherit;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #1a1a2e;
+  padding: 0.4rem 0.95rem;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
-.mode-desc {
-  font-size: 0.95rem;
-  color: #888;
+.globe-reset:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0px #111;
+}
+
+/* Title */
+.home-title {
+  font-size: 3.4rem;
+  font-weight: 800;
+  margin: 0 0 1.75rem;
+  color: #1a1a2e;
+  line-height: 1.05;
+}
+
+/* Vintage menu / instrument-console panel */
+.menu-panel {
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 5px 5px 0px #111;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  width: 100%;
+  max-width: 30rem;
+  box-sizing: border-box;
+}
+
+/* Each entry is a physical push button. Columns: numeral · icon · name · tag */
+.menu-row {
+  display: grid;
+  grid-template-columns: 2.4rem 1.8rem 1fr auto;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 5px 5px 0px #111;
+  font-family: inherit;
+  font-size: 1.15rem;
+  text-align: left;
+  color: #1a1a2e;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.menu-row:not(.disabled):hover {
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0px #111;
+}
+
+.menu-row.disabled {
+  color: #aaa;
+  border-color: #cccccc;
+  cursor: default;
+}
+
+.menu-num {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.menu-icon {
+  font-size: 1.4rem;
+  line-height: 1;
   text-align: center;
+}
+
+.menu-name {
+  font-weight: 600;
+}
+
+.menu-tag {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+.menu-row.disabled .menu-tag {
+  color: #aaa;
 }
 
 /* Quiz Layout — fits in 100vh, no scroll */
@@ -541,20 +627,36 @@ button.sq-box:hover {
 }
 
 /* Responsive */
-@media (max-width: 600px) {
-  .home-screen h1 {
-    font-size: 2.1rem;
-  }
-
-  .mode-buttons {
+@media (max-width: 900px) {
+  .home-screen {
     flex-direction: column;
-    align-items: stretch;
+    justify-content: center;
+    gap: 1.75rem;
+    overflow-y: auto;
   }
 
-  .mode-btn {
+  .home-left,
+  .home-right {
     width: 100%;
-    height: auto;
-    padding: 1.5rem;
+    align-items: center;
+  }
+
+  .home-right {
+    padding: 0 1rem;
+  }
+
+  .home-title {
+    text-align: center;
+  }
+
+  .globe-disc {
+    --disc: 425px;
+  }
+}
+
+@media (max-width: 600px) {
+  .home-title {
+    font-size: 2.4rem;
   }
 
   .guess-form {

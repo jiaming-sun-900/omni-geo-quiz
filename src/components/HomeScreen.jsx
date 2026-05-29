@@ -1,19 +1,45 @@
+import Globe from "./Globe";
+
+const ENTRIES = [
+  { num: "I.", icon: "🗺️", name: "State Quiz", mode: "state" },
+  { num: "II.", icon: "📍", name: "City Quiz", mode: "city" },
+  { num: "III.", icon: "✏️", name: "Fill in the States", soon: true },
+  { num: "IV.", icon: "🌏", name: "China Mode", soon: true },
+];
+
 export default function HomeScreen({ onSelectMode }) {
   return (
     <div className="home-screen">
-      <h1>US Geo Quiz</h1>
-      <p className="subtitle">Test your knowledge of US geography</p>
-      <div className="mode-buttons">
-        <button className="mode-btn" onClick={() => onSelectMode("state")}>
-          <span className="mode-icon">🗺</span>
-          <span className="mode-label">State Quiz</span>
-          <span className="mode-desc">Identify the state from a point on the map</span>
-        </button>
-        <button className="mode-btn" onClick={() => onSelectMode("city")}>
-          <span className="mode-icon">📍</span>
-          <span className="mode-label">City Quiz</span>
-          <span className="mode-desc">Identify the city from its location</span>
-        </button>
+      <div className="home-left">
+        <Globe />
+      </div>
+
+      <div className="home-right">
+        <h1 className="home-title">Omni Geo Quiz</h1>
+
+        <div className="menu-panel">
+          {ENTRIES.map((e) =>
+            e.soon ? (
+              <div key={e.num} className="menu-row disabled">
+                <span className="menu-num">{e.num}</span>
+                <span className="menu-icon">{e.icon}</span>
+                <span className="menu-name">{e.name}</span>
+                <span className="menu-tag">[SOON]</span>
+              </div>
+            ) : (
+              <button
+                key={e.num}
+                className="menu-row"
+                onClick={() => onSelectMode(e.mode)}
+              >
+                <span className="menu-num">{e.num}</span>
+                <span className="menu-icon">{e.icon}</span>
+                <span className="menu-name">{e.name}</span>
+                <span className="menu-tag">[ENTER →]</span>
+              </button>
+            )
+          )}
+        </div>
       </div>
     </div>
   );
