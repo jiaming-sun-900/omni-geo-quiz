@@ -51,4 +51,36 @@ export const cities = [
   { name: "Baltimore", lat: 39.30, lng: -76.61, state: "Maryland" },
   { name: "Washington DC", lat: 38.91, lng: -77.02, state: "District of Columbia" },
   { name: "Buffalo", lat: 42.89, lng: -78.88, state: "New York" },
+  { name: "Anchorage", lat: 61.22, lng: -149.90, state: "Alaska" },
+  { name: "Fairbanks", lat: 64.84, lng: -147.72, state: "Alaska" },
+  { name: "Honolulu", lat: 21.31, lng: -157.86, state: "Hawaii" },
 ];
+
+// Common abbreviations shown beside suggestions and matched in the typeahead.
+export const cityAbbreviations = {
+  "Washington DC": "DC",
+  "New York": "NYC",
+  "Los Angeles": "LA",
+  "San Francisco": "SF",
+  "New Orleans": "NOLA",
+};
+
+// Case-insensitive match against the city name and its abbreviation. Names (or
+// abbreviations) that START with the query rank ahead of those that merely
+// CONTAIN it elsewhere.
+export function getCitySuggestions(query, limit = 10) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const starts = [];
+  const contains = [];
+  for (const c of cities) {
+    const name = c.name.toLowerCase();
+    const abbr = cityAbbreviations[c.name]?.toLowerCase();
+    if (name.startsWith(q) || abbr?.startsWith(q)) {
+      starts.push(c.name);
+    } else if (name.includes(q) || abbr?.includes(q)) {
+      contains.push(c.name);
+    }
+  }
+  return [...starts, ...contains].slice(0, limit);
+}

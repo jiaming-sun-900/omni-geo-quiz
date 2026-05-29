@@ -63,14 +63,21 @@ export function matchesState(guess, stateName) {
   return fuzzyMatch(guess, stateName);
 }
 
+// Names (or abbreviations) that START with the query rank ahead of those that
+// merely CONTAIN it elsewhere.
 export function getStateSuggestions(query, limit = 10) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return allStateNames
-    .filter(
-      (name) =>
-        name.toLowerCase().startsWith(q) ||
-        stateAbbreviations[name].toLowerCase().startsWith(q)
-    )
-    .slice(0, limit);
+  const starts = [];
+  const contains = [];
+  for (const name of allStateNames) {
+    const n = name.toLowerCase();
+    const abbr = stateAbbreviations[name].toLowerCase();
+    if (n.startsWith(q) || abbr.startsWith(q)) {
+      starts.push(name);
+    } else if (n.includes(q) || abbr.includes(q)) {
+      contains.push(name);
+    }
+  }
+  return [...starts, ...contains].slice(0, limit);
 }
