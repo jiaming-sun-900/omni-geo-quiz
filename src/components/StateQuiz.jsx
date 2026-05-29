@@ -55,12 +55,12 @@ function Game({ onHome, onRestart, onFinish }) {
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
           <div className="sq-box sq-score">Score: {score}</div>
+          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
         </div>
       </div>
 
       <div className="sq-bottom-left">
-        <button className="sq-box sq-home" onClick={onHome}>🏠 Home</button>
-        <button className="sq-box sq-restart" onClick={onRestart}>🔄 Start Over</button>
+        <button className="sq-box sq-home sq-emoji" onClick={onHome}>🏠</button>
       </div>
 
       <USMap

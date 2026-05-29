@@ -410,9 +410,9 @@ button.sq-box:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.sq-restart {
-  width: 220px;
-  white-space: nowrap;
+.sq-emoji {
+  font-size: 2rem;
+  line-height: 1;
 }
 
 /* Small top breathing room so the map isn't flush against the viewport edge */
