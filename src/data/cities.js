@@ -19,6 +19,8 @@ export const cities = [
   { name: "Austin", lat: 30.31, lng: -97.75, state: "Texas" },
   { name: "San Antonio", lat: 29.46, lng: -98.51, state: "Texas" },
   { name: "New Orleans", lat: 29.95, lng: -90.07, state: "Louisiana" },
+  { name: "Little Rock", lat: 34.75, lng: -92.29, state: "Arkansas" },
+  { name: "Bentonville", lat: 36.37, lng: -94.21, state: "Arkansas" },
   { name: "Oklahoma City", lat: 35.47, lng: -97.51, state: "Oklahoma" },
   { name: "Chicago", lat: 41.84, lng: -87.68, state: "Illinois" },
   { name: "St. Louis", lat: 38.63, lng: -90.20, state: "Missouri" },
