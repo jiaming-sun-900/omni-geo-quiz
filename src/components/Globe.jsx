@@ -322,7 +322,7 @@ export default function Globe() {
       </div>
 
       <button className="globe-reset" onClick={() => apiRef.current?.reset()}>
-        Reset view
+        Reset View
       </button>
     </div>
   );
