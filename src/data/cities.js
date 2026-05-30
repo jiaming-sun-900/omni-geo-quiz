@@ -72,9 +72,17 @@ export const cityAbbreviations = {
   "New Orleans": "NOLA",
 };
 
+// City names that appear more than once in the list — these get a state suffix in the dropdown.
+const duplicateCityNames = new Set(
+  cities
+    .map((c) => c.name)
+    .filter((name, i, arr) => arr.indexOf(name) !== arr.lastIndexOf(name))
+);
+
 // Case-insensitive match against the city name and its abbreviation. Names (or
 // abbreviations) that START with the query rank ahead of those that merely
 // CONTAIN it elsewhere.
+// Returns [{name, label}] where label includes "(State)" for duplicate city names.
 export function getCitySuggestions(query, limit = 10) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -84,10 +92,13 @@ export function getCitySuggestions(query, limit = 10) {
     const name = c.name.toLowerCase();
     const abbr = cityAbbreviations[c.name]?.toLowerCase();
     if (name.startsWith(q) || abbr?.startsWith(q)) {
-      starts.push(c.name);
+      starts.push(c);
     } else if (name.includes(q) || abbr?.includes(q)) {
-      contains.push(c.name);
+      contains.push(c);
     }
   }
-  return [...starts, ...contains].slice(0, limit);
+  return [...starts, ...contains].slice(0, limit).map((c) => ({
+    name: c.name,
+    label: duplicateCityNames.has(c.name) ? `${c.name} (${c.state})` : c.name,
+  }));
 }

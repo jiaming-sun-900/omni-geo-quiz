@@ -60,7 +60,7 @@ export default function GuessInput({ onSubmit, disabled }) {
       setHighlighted((h) => (h <= 0 ? suggestions.length - 1 : h - 1));
     } else if (e.key === "Enter" && highlighted >= 0) {
       e.preventDefault();
-      handleSelect(suggestions[highlighted]);
+      handleSelect(suggestions[highlighted].name);
     } else if (e.key === "Escape") {
       setOpen(false);
       setHighlighted(-1);
@@ -84,21 +84,21 @@ export default function GuessInput({ onSubmit, disabled }) {
         />
         {open && suggestions.length > 0 && (
           <ul className="autocomplete-dropdown" role="listbox">
-            {suggestions.map((name, i) => (
+            {suggestions.map((s, i) => (
               <li
-                key={name}
+                key={s.label}
                 className={i === highlighted ? "highlighted" : ""}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  handleSelect(name);
+                  handleSelect(s.name);
                 }}
                 onMouseEnter={() => setHighlighted(i)}
                 role="option"
                 aria-selected={i === highlighted}
               >
-                <span className="state-name">{name}</span>
-                {cityAbbreviations[name] && (
-                  <span className="state-abbr">{cityAbbreviations[name]}</span>
+                <span className="state-name">{s.label}</span>
+                {cityAbbreviations[s.name] && (
+                  <span className="state-abbr">{cityAbbreviations[s.name]}</span>
                 )}
               </li>
             ))}

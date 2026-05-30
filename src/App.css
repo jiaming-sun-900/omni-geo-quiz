@@ -373,13 +373,20 @@
   cursor: not-allowed;
 }
 
-/* Submit button: signature orange when active, default dark when disabled (no text) */
-.guess-form .btn.primary:not(:disabled) {
-  background: #FF4F00;
+/* City Quiz Submit: design-system white button with hard offset shadow */
+.guess-form .btn.primary {
+  background: #fff;
+  color: #1a1a2e;
+  border: 2px solid #111;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #111;
+  transition: transform 0.1s, box-shadow 0.1s;
 }
 
 .guess-form .btn.primary:not(:disabled):hover {
-  background: #e64600;
+  background: #fff;
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #111;
 }
 
 .btn.secondary {
@@ -545,16 +552,17 @@
   padding: 0.5rem;
   box-sizing: border-box;
   line-height: 1.2;
-  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 3px 3px 0px #111;
 }
 
 button.sq-box {
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.1s, box-shadow 0.1s;
 }
 
 button.sq-box:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #111;
 }
 
 .sq-emoji {
