@@ -61,6 +61,7 @@
   font-weight: 600;
   color: #1a1a2e;
   padding: 0.4rem 0.95rem;
+  margin-top: 1.1rem;
   cursor: pointer;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
@@ -68,6 +69,114 @@
 .globe-reset:hover {
   transform: translate(1px, 1px);
   box-shadow: 2px 2px 0px #111;
+}
+
+/* Playback control row — prev / play-pause / next centered on the globe's
+   vertical axis, with the speed indicator just to the right of the next button.
+   The row shrinks to the trio's width so the middle button stays on axis. */
+.globe-controls {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.4rem;
+}
+
+/* Retro push button shared by every playback control */
+.globe-btn {
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #111;
+  font-family: inherit;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.globe-btn:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0px #111;
+}
+
+.globe-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #111;
+}
+
+/* Speed indicator sits just right of the next button; play/pause stays on the
+   axis because the row itself is centered around the trio. */
+.globe-speed {
+  position: absolute;
+  left: calc(100% + 2rem);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.globe-speed-btn {
+  width: auto;
+  min-width: 3.4rem;
+  padding: 0 0.7rem;
+  font-size: 1.05rem;
+}
+
+/* Hover dropdown of speed options */
+.globe-speed-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #111;
+  padding: 6px;
+  z-index: 5;
+}
+
+/* Transparent bridge over the gap so hover survives the trip to the menu */
+.globe-speed-menu::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+
+.globe-speed:hover .globe-speed-menu {
+  display: flex;
+}
+
+.globe-speed-menu button {
+  background: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  padding: 4px 12px;
+  cursor: pointer;
+  text-align: right;
+}
+
+.globe-speed-menu button:hover {
+  background: #FAF7F4;
+}
+
+.globe-speed-menu button.active {
+  color: #F97316;
 }
 
 /* Title */
