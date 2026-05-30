@@ -219,6 +219,47 @@
   flex-shrink: 0;
 }
 
+/* Red dot entrance — pop/bounce on the dot, expanding fading ripple ring.
+   Both scale about their own center (fill-box). Plays once per new dot. */
+.map-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dot-pop 0.4s ease-out;
+}
+
+@keyframes dot-pop {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.map-dot-ring {
+  fill: none;
+  stroke: #e53e3e;
+  stroke-width: 2.5;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dot-ring 1.2s ease-out forwards;
+}
+
+@keyframes dot-ring {
+  0% {
+    transform: scale(1);
+    stroke-opacity: 0.9;
+  }
+  100% {
+    transform: scale(5);
+    stroke-opacity: 0;
+  }
+}
+
 /* Quiz Controls */
 .quiz-controls {
   flex-shrink: 0;

@@ -32,6 +32,7 @@ function computeDims() {
 
 export default function USMap({ dotPosition, revealedStateId, showRivers = false, showMountains = false, showBorders = false }) {
   const svgRef = useRef();
+  const prevDotRef = useRef(null);
   const [dimensions, setDimensions] = useState(() =>
     typeof window === "undefined"
       ? { width: 900, height: 900 * ASPECT }
@@ -115,12 +116,27 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
         .attr("stroke-width", 1.5);
     }
 
-    // Red dot
+    // Red dot — pop/ripple entrance only when a genuinely new dot appears
+    // (compared by value, so toggling overlays doesn't replay the animation).
     if (dotPosition) {
       const projected = projection(dotPosition);
       if (projected) {
+        const prev = prevDotRef.current;
+        const isNewDot =
+          !prev || prev[0] !== dotPosition[0] || prev[1] !== dotPosition[1];
+
+        if (isNewDot) {
+          svg
+            .append("circle")
+            .attr("class", "map-dot-ring")
+            .attr("cx", projected[0])
+            .attr("cy", projected[1])
+            .attr("r", 6);
+        }
+
         svg
           .append("circle")
+          .attr("class", isNewDot ? "map-dot" : null)
           .attr("cx", projected[0])
           .attr("cy", projected[1])
           .attr("r", 6)
@@ -129,6 +145,8 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
           .attr("stroke-width", 2);
       }
     }
+
+    prevDotRef.current = dotPosition;
   }, [dotPosition, revealedStateId, dimensions, showRivers, showMountains, showBorders]);
 
   return (
