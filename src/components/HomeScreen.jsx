@@ -9,7 +9,16 @@ const ENTRIES = [
 
 export default function HomeScreen({ onSelectMode }) {
   return (
-    <div className="home-screen">
+    <>
+      <a
+        className="dev-link"
+        href="https://jiaming-sun-900.github.io"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Meet the Dev 👋
+      </a>
+      <div className="home-screen">
       <div className="home-left">
         <Globe />
       </div>
@@ -42,5 +51,6 @@ export default function HomeScreen({ onSelectMode }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

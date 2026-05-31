@@ -179,6 +179,36 @@
   color: #F97316;
 }
 
+/* "Meet the Dev" link — fixed top-right corner of the Home screen */
+.dev-link {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #111;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  padding: 0.4rem 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  z-index: 10;
+}
+
+.dev-link:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0px #111;
+}
+
+.dev-link:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #111;
+}
+
 /* Title */
 .home-title {
   font-size: 3.4rem;
