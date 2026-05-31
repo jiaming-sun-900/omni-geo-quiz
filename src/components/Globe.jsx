@@ -16,8 +16,9 @@ const BASE_SPEED = (2 * Math.PI) / 20; // rad per second
 
 const SPEEDS = [0.5, 1.0, 2.0, 5.0];
 
-// The three swappable spheres. Earth uses the locally-painted canvas texture
-// (continents + ocean); Mars and Jupiter load NASA equirectangular-ish photos.
+// The swappable spheres. Earth uses the locally-painted canvas texture
+// (continents + ocean); the others load equirectangular planet photos. Saturn
+// additionally gets a tilted 3D ring (see the Three.js setup effect below).
 const PLANETS = [
   { id: "earth", name: "Earth" },
   {
@@ -30,7 +31,23 @@ const PLANETS = [
     name: "Jupiter",
     url: "https://upload.wikimedia.org/wikipedia/commons/b/be/Solarsystemscope_texture_2k_jupiter.jpg",
   },
+  {
+    id: "saturn",
+    name: "Saturn",
+    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Solarsystemscope_texture_8k_saturn.jpg/1280px-Solarsystemscope_texture_8k_saturn.jpg",
+  },
+  {
+    id: "neptune",
+    name: "Neptune",
+    url: "https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg",
+  },
 ];
+
+// Saturn's ring texture: a radial slice (with alpha) from the same Solar System
+// Scope set as the planet photos above. Hosted on Wikimedia (CORS-enabled for
+// WebGL); the solarsystemscope.com original sends no CORS header.
+const SATURN_RING_URL =
+  "https://upload.wikimedia.org/wikipedia/commons/7/7d/Solarsystemscope_texture_2k_saturn_ring_alpha.png";
 
 const land = topojson.feature(countriesAtlas, countriesAtlas.objects.land);
 
@@ -138,12 +155,45 @@ export default function Globe() {
     );
     globe.add(sphere);
 
+    // Saturn's rings: a real 3D ring added to the same group as the sphere, so it
+    // auto-rotates and responds to camera drag. Tilted 63° (27° off horizontal) to
+    // echo Saturn's axial tilt, so from the equatorial camera it reads as the
+    // classic thin ellipse. Shown only while Saturn is the active planet.
+    const ringGeometry = new THREE.RingGeometry(1.3, 2.2, 64);
+    // Remap UVs so the texture's horizontal axis runs along the ring's radius —
+    // this turns the radial-slice image into concentric bands instead of a flat
+    // stamped square.
+    const ringPos = ringGeometry.attributes.position;
+    const ringUv = ringGeometry.attributes.uv;
+    const ringVec = new THREE.Vector3();
+    const ringMid = (1.3 + 2.2) / 2;
+    for (let i = 0; i < ringPos.count; i++) {
+      ringVec.fromBufferAttribute(ringPos, i);
+      ringUv.setXY(i, ringVec.length() < ringMid ? 0 : 1, 1);
+    }
+    const ringMaterial = new THREE.MeshBasicMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+    });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.rotation.x = (63 * Math.PI) / 180;
+    ring.visible = false;
+    globe.add(ring);
+
     // Lazily-loaded planet textures, keyed by planet id. Earth is ready now.
     const textures = { earth: earthTexture };
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
 
+    // Load Saturn's ring texture once and apply it to the ring material.
+    loader.load(SATURN_RING_URL, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      ringMaterial.map = tex;
+      ringMaterial.needsUpdate = true;
+    });
+
     const setPlanet = (id) => {
+      ring.visible = id === "saturn";
       const apply = (tex) => {
         sphere.material.map = tex;
         sphere.material.needsUpdate = true;
@@ -263,6 +313,8 @@ export default function Globe() {
       Object.values(textures).forEach((t) => t.dispose());
       sphere.geometry.dispose();
       sphere.material.dispose();
+      ringGeometry.dispose();
+      ringMaterial.dispose();
       if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);
       }
