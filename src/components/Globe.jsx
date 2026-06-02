@@ -6,6 +6,10 @@ import { geoEquirectangular, geoPath, geoGraticule10 } from "d3-geo";
 import countriesAtlas from "world-atlas/countries-110m.json";
 
 const RADIUS = 1;
+// The canvas is drawn larger than the sphere so Saturn's ring (outer radius 2.2)
+// fits inside the frame instead of being clipped at the canvas edge. The camera
+// zooms out by the same factor so the sphere keeps its on-screen size.
+const CANVAS_SCALE = 2.5;
 const RESUME_DELAY = 1500; // ms paused after a drag before auto-rotation resumes
 const RESET_DURATION = 600; // ms for the reset-view camera animation
 const ORIGIN = new THREE.Vector3(0, 0, 0);
@@ -199,7 +203,7 @@ export default function Globe() {
     const DEFAULT_POS = new THREE.Vector3(
       0,
       0,
-      RADIUS / (0.8 * Math.tan((45 * Math.PI) / 360))
+      (RADIUS / (0.8 * Math.tan((45 * Math.PI) / 360))) * CANVAS_SCALE
     );
     camera.position.copy(DEFAULT_POS);
 
@@ -325,10 +329,10 @@ export default function Globe() {
     apiRef.current = { reset: startReset, setPlanet };
 
     const resize = () => {
-      const size = container.clientWidth;
+      const size = container.clientWidth * CANVAS_SCALE;
       renderer.setSize(size, size, false);
-      renderer.domElement.style.width = "100%";
-      renderer.domElement.style.height = "100%";
+      renderer.domElement.style.width = `${CANVAS_SCALE * 100}%`;
+      renderer.domElement.style.height = `${CANVAS_SCALE * 100}%`;
       camera.aspect = 1;
       camera.updateProjectionMatrix();
     };
