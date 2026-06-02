@@ -14,31 +14,44 @@ const ORIGIN = new THREE.Vector3(0, 0, 0);
 // multiplier and integrated with delta-time so it's frame-rate independent.
 const BASE_SPEED = (2 * Math.PI) / 20; // rad per second
 
-const SPEEDS = [0.5, 1.0, 2.0, 5.0];
+const SPEEDS = [0.2, 1.0, 5.0, 10.0];
+
+// Radial speed menu: the four options fan out across the right semicircle at
+// equal angular intervals (-60° / -20° / +20° / +60° from horizontal right).
+// Positions are precomputed (px from the button's right-center).
+const FAN_RADIUS = 92;
+const FAN_POS = [-80, -26.67, 26.67, 80].map((deg) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: Math.cos(a) * FAN_RADIUS, y: Math.sin(a) * FAN_RADIUS };
+});
 
 // The swappable spheres. Earth uses the locally-painted canvas texture
 // (continents + ocean); the others load equirectangular planet photos. Saturn
 // additionally gets a tilted 3D ring (see the Three.js setup effect below).
 const PLANETS = [
-  { id: "earth", name: "Earth" },
+  { id: "earth", name: "Earth", color: "#4A90B8" },
   {
     id: "mars",
     name: "Mars",
+    color: "#C1440E",
     url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Solarsystemscope_texture_8k_mars.jpg/1280px-Solarsystemscope_texture_8k_mars.jpg",
   },
   {
     id: "jupiter",
     name: "Jupiter",
+    color: "#C88B3A",
     url: "https://upload.wikimedia.org/wikipedia/commons/b/be/Solarsystemscope_texture_2k_jupiter.jpg",
   },
   {
     id: "saturn",
     name: "Saturn",
+    color: "#C8A96E",
     url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Solarsystemscope_texture_8k_saturn.jpg/1280px-Solarsystemscope_texture_8k_saturn.jpg",
   },
   {
     id: "neptune",
     name: "Neptune",
+    color: "#3F54BA",
     url: "https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg",
   },
 ];
@@ -109,6 +122,7 @@ export default function Globe() {
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1.0);
   const [planetIndex, setPlanetIndex] = useState(0);
+  const [speedOpen, setSpeedOpen] = useState(false);
 
   const togglePlay = () =>
     setPlaying((p) => {
@@ -124,6 +138,55 @@ export default function Globe() {
 
   const cyclePlanet = (dir) =>
     setPlanetIndex((i) => (i + dir + PLANETS.length) % PLANETS.length);
+
+  // Drag-to-scrub: while the mouse is held down over the dots row, switch to
+  // whichever dot the cursor is currently over, so a single click-and-drag can
+  // sweep through all five planets. Works alongside the per-dot click handler.
+  const dotsRef = useRef(null);
+  const draggingRef = useRef(false);
+
+  const dotIndexFromX = (clientX) => {
+    const dots = dotsRef.current?.children;
+    if (!dots) return -1;
+    for (let i = 0; i < dots.length; i++) {
+      const r = dots[i].getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right) return i;
+    }
+    return -1;
+  };
+
+  const startScrub = (e) => {
+    draggingRef.current = true;
+    const i = dotIndexFromX(e.clientX);
+    if (i !== -1) setPlanetIndex(i);
+  };
+
+  const scrub = (e) => {
+    if (!draggingRef.current) return;
+    const i = dotIndexFromX(e.clientX);
+    if (i !== -1) setPlanetIndex(i);
+  };
+
+  useEffect(() => {
+    const endScrub = () => {
+      draggingRef.current = false;
+    };
+    window.addEventListener("mouseup", endScrub);
+    return () => window.removeEventListener("mouseup", endScrub);
+  }, []);
+
+  // Click-toggle speed menu: clicking the button opens/closes the fan; a click
+  // anywhere outside the speed component closes it.
+  const speedMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!speedOpen) return;
+    const onDocClick = (e) => {
+      if (!speedMenuRef.current?.contains(e.target)) setSpeedOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [speedOpen]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -332,6 +395,24 @@ export default function Globe() {
     <div className="globe-wrap">
       <div className="globe-disc" ref={containerRef} aria-hidden="true" />
 
+      <div
+        className="globe-dots"
+        ref={dotsRef}
+        onMouseDown={startScrub}
+        onMouseMove={scrub}
+      >
+        {PLANETS.map((p, i) => (
+          <button
+            key={p.id}
+            className={`globe-dot${i === planetIndex ? " active" : ""}`}
+            style={{ "--planet-color": p.color }}
+            onClick={() => setPlanetIndex(i)}
+            aria-label={p.name}
+            aria-pressed={i === planetIndex}
+          />
+        ))}
+      </div>
+
       <div className="globe-controls">
         <button
           className="globe-btn"
@@ -355,16 +436,29 @@ export default function Globe() {
           ⏭
         </button>
 
-        <div className="globe-speed">
-          <button className="globe-btn globe-speed-btn" aria-label="Rotation speed">
+        <div className="globe-speed" ref={speedMenuRef}>
+          <button
+            className="globe-btn globe-speed-btn"
+            aria-label="Rotation speed"
+            onClick={() => setSpeedOpen((o) => !o)}
+          >
             {speed.toFixed(1)}×
           </button>
-          <div className="globe-speed-menu">
-            {SPEEDS.map((s) => (
+          <div className={`globe-fan${speedOpen ? " open" : ""}`}>
+            <div className="globe-fan-overlay" aria-hidden="true" />
+            {SPEEDS.map((s, i) => (
               <button
                 key={s}
-                className={s === speed ? "active" : ""}
-                onClick={() => changeSpeed(s)}
+                className={`globe-fan-btn${s === speed ? " active" : ""}`}
+                style={{
+                  "--x": `${FAN_POS[i].x}px`,
+                  "--y": `${FAN_POS[i].y}px`,
+                  "--d": `${i * 30}ms`,
+                }}
+                onClick={() => {
+                  changeSpeed(s);
+                  setSpeedOpen(false);
+                }}
               >
                 {s.toFixed(1)}×
               </button>

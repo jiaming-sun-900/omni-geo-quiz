@@ -71,6 +71,57 @@
   box-shadow: 2px 2px 0px #111;
 }
 
+/* Planet indicator dots — one per planet, centered on the globe's axis between
+   the sphere and the playback controls. Active planet is a filled black circle;
+   inactive ones are hollow with a black border. Click to jump to that planet. */
+.globe-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.globe-dot {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2.5px solid color-mix(in srgb, var(--planet-color) 50%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.globe-dot.active {
+  width: 18px;
+  height: 18px;
+  border-color: var(--planet-color);
+  background: var(--planet-color);
+}
+
+/* Gentle glowing ring that expands and fades from the active dot, looping
+   forever — a slower, softer cousin of the map-dot ripple. */
+.globe-dot.active::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--planet-color);
+  pointer-events: none;
+  animation: globe-dot-pulse 2s ease-out infinite;
+}
+
+@keyframes globe-dot-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
 /* Playback control row — prev / play-pause / next centered on the globe's
    vertical axis, with the speed indicator just to the right of the next button.
    The row shrinks to the trio's width so the middle button stays on axis. */
@@ -128,55 +179,74 @@
   font-size: 1.05rem;
 }
 
-/* Hover dropdown of speed options */
-.globe-speed-menu {
+/* Radial speed menu — options fan out across the right semicircle on hover.
+   The fan box is anchored to the button's right edge and (when open) acts as a
+   hover bridge so moving out to the options keeps the menu open. */
+.globe-fan {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  display: none;
-  flex-direction: column;
-  gap: 4px;
-  background: #fff;
-  border: 2px solid #1a1a1a;
-  border-radius: 12px;
-  box-shadow: 3px 3px 0px #111;
-  padding: 6px;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  width: 160px;
+  height: 260px;
+  pointer-events: none;
   z-index: 5;
 }
 
-/* Transparent bridge over the gap so hover survives the trip to the menu */
-.globe-speed-menu::before {
-  content: "";
+.globe-fan.open {
+  pointer-events: auto;
+}
+
+/* Invisible hover bridge covering the entire fan region (including the gaps
+   between option buttons). It sits beneath the buttons so they stay clickable,
+   but keeps the menu open as long as the cursor is anywhere over the fan. */
+.globe-fan-overlay {
   position: absolute;
-  bottom: 100%;
+  inset: 0;
+  background: none;
+  pointer-events: none;
+}
+
+.globe-fan.open .globe-fan-overlay {
+  pointer-events: auto;
+}
+
+/* Each option: small circular retro button. Collapsed at the button center
+   (scale 0, faded), then animates outward to its fan position with a staggered
+   scale-up + fade-in (delay set per option via --d). */
+.globe-fan-btn {
+  position: absolute;
   left: 0;
-  right: 0;
-  height: 8px;
-}
-
-.globe-speed:hover .globe-speed-menu {
+  top: 50%;
+  width: 3.1rem;
+  height: 3.1rem;
   display: flex;
-}
-
-.globe-speed-menu button {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   background: #fff;
-  border: none;
-  border-radius: 6px;
+  border: 2px solid #1a1a1a;
+  border-radius: 50%;
+  box-shadow: 3px 3px 0px #111;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #1a1a2e;
-  padding: 4px 12px;
   cursor: pointer;
-  text-align: right;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition-delay: var(--d);
 }
 
-.globe-speed-menu button:hover {
-  background: #FAF7F4;
+.globe-fan.open .globe-fan-btn {
+  opacity: 1;
+  transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1);
 }
 
-.globe-speed-menu button.active {
-  color: #F97316;
+.globe-fan-btn.active {
+  background: #1a1a1a;
+  color: #fff;
 }
 
 /* "Meet the Dev" link — fixed top-right corner of the Home screen */
