@@ -43,21 +43,26 @@
   height: var(--disc);
   flex-shrink: 0;
   /* The canvas is drawn larger than this box (to fit Saturn's ring); let it
-     spill out instead of being clipped. Left with z-index auto (no stacking
-     context) so it paints in normal flow order — i.e. behind the later-in-DOM
-     menu panel / page UI. */
+     spill out instead of being clipped. Its transparent overflow extends well
+     past the disc (into the menu panel on the right), so the disc and canvas are
+     made click-through — otherwise that invisible overflow swallows clicks meant
+     for the menu entries. Interactive globe controls re-enable pointer events
+     individually below. */
   overflow: visible;
+  pointer-events: none;
 }
 
 /* The oversized canvas is centered on the disc with negative margins so the
    sphere stays put while the extra room around it holds the ring. The soft
-   drop shadow follows the rendered alpha. */
+   drop shadow follows the rendered alpha. pointer-events: none so the overflow
+   never blocks clicks on surrounding page UI. */
 .globe-disc canvas {
   display: block;
   width: 250%;
   height: 250%;
   margin: -75%;
   filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.28));
+  pointer-events: none;
 }
 
 /* Reset-view button — matches the app's retro hard-shadow buttons. Positioned
@@ -66,6 +71,7 @@
 .globe-reset {
   position: relative;
   z-index: 1;
+  pointer-events: auto;
   background: #fff;
   border: 2px solid #1a1a1a;
   border-radius: 8px;
@@ -91,6 +97,7 @@
 .globe-dots {
   position: relative;
   z-index: 1;
+  pointer-events: auto;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -143,6 +150,7 @@
    The row shrinks to the trio's width so the middle button stays on axis. */
 .globe-controls {
   position: relative;
+  pointer-events: auto;
   display: flex;
   justify-content: center;
   align-items: center;
