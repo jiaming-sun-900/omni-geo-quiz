@@ -23,7 +23,7 @@ html {
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100vh;
 }
 
 body {
@@ -32,12 +32,12 @@ body {
     "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #F9F6F0;
+  background: #FAF7F4;
   color: #1a1a2e;
 }
 
 #root {
   display: flex;
   flex-direction: column;
-  background: #F9F6F0;
+  background: #FAF7F4;
 }

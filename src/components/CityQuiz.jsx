@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import USMap from "./USMap";
 import GuessInput from "./GuessInput";
+import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
 import { cities } from "../data/cities";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
@@ -60,9 +61,25 @@ function Game({
     }
   };
 
-  const nextBtnRef = useRef(null);
+  // While the bubble is up, the next Enter press or click anywhere advances the
+  // round (or finishes). Listeners attach after this render, so the very event
+  // that submitted the answer doesn't immediately dismiss the bubble. Reuses
+  // handleNext, so the game logic is unchanged.
   useEffect(() => {
-    if (feedback) nextBtnRef.current?.focus({ preventScroll: true });
+    if (!feedback) return;
+    const onKey = (e) => {
+      if (e.key === "Enter" && !e.repeat) {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    const onClick = () => handleNext();
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("click", onClick);
+    };
   }, [feedback]);
 
   return (
@@ -126,28 +143,20 @@ function Game({
       </div>
 
       <div className="quiz-controls">
-        {!feedback ? (
-          <>
-            <p className="prompt">Which city is the red dot in?</p>
-            <GuessInput onSubmit={handleGuess} disabled={false} />
-          </>
-        ) : (
-          <div className={`feedback ${feedback.correct ? "correct" : "incorrect"}`}>
-            <p>
-              {feedback.correct
-                ? `Correct! ${current.city.name}, ${current.city.state}`
-                : `Incorrect! The answer was ${feedback.answer}.`}
-            </p>
-            <button
-              ref={nextBtnRef}
-              className="btn primary"
-              onClick={handleNext}
-            >
-              {round >= TOTAL_ROUNDS ? "See Results" : "Next"}
-            </button>
-          </div>
-        )}
+        <p className="prompt">Which city is the red dot in?</p>
+        <GuessInput onSubmit={handleGuess} disabled={!!feedback} />
       </div>
+
+      {feedback && (
+        <FeedbackBubble
+          correct={feedback.correct}
+          message={
+            feedback.correct
+              ? `Correct! ${current.city.name}, ${current.city.state}`
+              : `Incorrect! The answer was ${feedback.answer}.`
+          }
+        />
+      )}
     </div>
   );
 }

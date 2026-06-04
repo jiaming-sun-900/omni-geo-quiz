@@ -3,7 +3,7 @@ import Globe from "./Globe";
 const ENTRIES = [
   { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "state" },
   { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "city" },
-  { num: "III.", icon: "✏️ 🇺🇸", name: "US Fill in the States", soon: true },
+  { num: "III.", icon: "✈️ 🇺🇸", name: "US Airport Quiz", mode: "airport" },
   { num: "IV.", icon: "🌏 🇨🇳", name: "China Mode", soon: true },
 ];
 

@@ -1,41 +1,64 @@
 import { useState, useRef, useEffect } from "react";
-import USMap, { states } from "./USMap";
-import StateGuessInput from "./StateGuessInput";
+import USMap from "./USMap";
+import AirportGuessInput from "./AirportGuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
-import { getRandomPointInState } from "../utils/randomPoint";
-import { matchesState } from "../data/states";
+import { airports, matchAirport } from "../data/airports";
 
 const TOTAL_ROUNDS = 10;
 
-function pickRound(usedIds) {
-  const available = states.filter((s) => !usedIds.has(s.id));
-  const pool = available.length > 0 ? available : states;
-  const state = pool[Math.floor(Math.random() * pool.length)];
-  const point = getRandomPointInState(state);
-  return { state, point };
+function pickAirport(usedIndices) {
+  const available = airports
+    .map((a, i) => ({ airport: a, index: i }))
+    .filter(({ index }) => !usedIndices.has(index));
+  const pool =
+    available.length > 0
+      ? available
+      : airports.map((a, i) => ({ airport: a, index: i }));
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function Game({ onHome, onRestart, onFinish }) {
-  const usedIds = useRef(new Set());
+// "A" / "A and B" / "A, B, and C"
+function joinAirlines(list) {
+  if (list.length <= 1) return list.join("");
+  if (list.length === 2) return `${list[0]} and ${list[1]}`;
+  return `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
+}
+
+function Game({
+  onHome,
+  onRestart,
+  onFinish,
+  showRivers,
+  setShowRivers,
+  showMountains,
+  setShowMountains,
+  showBorders,
+  setShowBorders,
+}) {
+  const usedIndices = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
-  const [current, setCurrent] = useState(() => pickRound(usedIds.current));
+  const [current, setCurrent] = useState(() => pickAirport(usedIndices.current));
   const [feedback, setFeedback] = useState(null);
-  const [showRivers, setShowRivers] = useState(false);
-  const [showMountains, setShowMountains] = useState(false);
-  const [showBorders, setShowBorders] = useState(false);
+  // hintLevel: 0 = none shown yet, 1 = airline hub hint, 2 = state hint (max).
+  // hintOpen: whether the bubble is currently visible. The level persists even
+  // while the bubble is dismissed, so reopening shows the same hint. Both reset
+  // each round.
+  const [hintLevel, setHintLevel] = useState(0);
+  const [hintOpen, setHintOpen] = useState(false);
   const scoreRef = useRef(0);
 
   const handleGuess = (guess) => {
-    const correct = matchesState(guess, current.state.properties.name);
+    const correct = matchAirport(guess, current.airport);
     if (correct) {
       const next = score + 1;
       setScore(next);
       scoreRef.current = next;
     }
-    setFeedback({ correct, answer: current.state.properties.name });
-    usedIds.current.add(current.state.id);
+    setFeedback({ correct });
+    setHintOpen(false);
+    usedIndices.current.add(current.index);
   };
 
   const handleNext = () => {
@@ -44,9 +67,35 @@ function Game({ onHome, onRestart, onFinish }) {
     } else {
       setRound((r) => r + 1);
       setFeedback(null);
-      setCurrent(pickRound(usedIds.current));
+      setHintLevel(0);
+      setHintOpen(false);
+      setCurrent(pickAirport(usedIndices.current));
     }
   };
+
+  // Hint button: if the bubble was dismissed but a hint is already revealed,
+  // the first click just reopens it at the same level; otherwise it advances to
+  // the next level (capped at 2). Progression itself is unchanged.
+  const handleHint = () => {
+    if (!hintOpen && hintLevel > 0) {
+      setHintOpen(true);
+      return;
+    }
+    setHintLevel((l) => Math.min(l + 1, 2));
+    setHintOpen(true);
+  };
+
+  const closeHint = () => setHintOpen(false);
+
+  const a = current.airport;
+  const hintText =
+    hintLevel === 1
+      ? `This airport is a hub for ${joinAirlines(a.hubs)}.`
+      : hintLevel === 2
+      ? `This airport is in ${a.state}.`
+      : null;
+
+  const reveal = `${a.name} (${a.code}) — ${a.city}, ${a.state}`;
 
   // While the bubble is up, the next Enter press or click anywhere advances the
   // round (or finishes). Listeners attach after this render, so the very event
@@ -70,7 +119,10 @@ function Game({ onHome, onRestart, onFinish }) {
   }, [feedback]);
 
   return (
-    <div className="quiz-container state-quiz">
+    <div
+      className="quiz-container state-quiz"
+      style={{ minHeight: "100vh", background: "#FAF7F4" }}
+    >
       <div className="state-quiz-header">
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
@@ -84,8 +136,7 @@ function Game({ onHome, onRestart, onFinish }) {
       </div>
 
       <USMap
-        dotPosition={current.point}
-        revealedStateId={feedback ? current.state.id : null}
+        dotPosition={[a.lng, a.lat]}
         showRivers={showRivers}
         showMountains={showMountains}
         showBorders={showBorders}
@@ -131,8 +182,17 @@ function Game({ onHome, onRestart, onFinish }) {
       </div>
 
       <div className="quiz-controls">
-        <p className="prompt">Which state is the red dot in?</p>
-        <StateGuessInput onSubmit={handleGuess} disabled={!!feedback} />
+        <p className="prompt">Which airport is marked by the red dot?</p>
+        <AirportGuessInput
+          onSubmit={handleGuess}
+          disabled={!!feedback}
+          onHint={handleHint}
+          onHintClose={closeHint}
+          hintDisabled={hintLevel >= 2}
+          hintLevel={hintLevel}
+          hintOpen={hintOpen}
+          hintText={hintText}
+        />
       </div>
 
       {feedback && (
@@ -140,8 +200,8 @@ function Game({ onHome, onRestart, onFinish }) {
           correct={feedback.correct}
           message={
             feedback.correct
-              ? "Correct!"
-              : `Incorrect! The answer was ${feedback.answer}.`
+              ? `Correct! ${reveal}`
+              : `Incorrect! The answer was ${reveal}.`
           }
         />
       )}
@@ -149,9 +209,14 @@ function Game({ onHome, onRestart, onFinish }) {
   );
 }
 
-export default function StateQuiz({ onHome }) {
+export default function AirportQuiz({ onHome }) {
   const [gameKey, setGameKey] = useState(0);
   const [finalScore, setFinalScore] = useState(null);
+  // Toggle state lives here (above the gameKey remount) so Start Over resets
+  // score/round but preserves the overlay toggles.
+  const [showRivers, setShowRivers] = useState(false);
+  const [showMountains, setShowMountains] = useState(false);
+  const [showBorders, setShowBorders] = useState(false);
 
   const restart = () => {
     setFinalScore(null);
@@ -169,5 +234,18 @@ export default function StateQuiz({ onHome }) {
     );
   }
 
-  return <Game key={gameKey} onHome={onHome} onRestart={restart} onFinish={setFinalScore} />;
+  return (
+    <Game
+      key={gameKey}
+      onHome={onHome}
+      onRestart={restart}
+      onFinish={setFinalScore}
+      showRivers={showRivers}
+      setShowRivers={setShowRivers}
+      showMountains={showMountains}
+      setShowMountains={setShowMountains}
+      showBorders={showBorders}
+      setShowBorders={setShowBorders}
+    />
+  );
 }
