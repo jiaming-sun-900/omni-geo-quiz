@@ -43,6 +43,7 @@ export const airports = [
   { code: "AUS", name: "Austin-Bergstrom International", city: "Austin", lat: 30.1975, lng: -97.6664, state: "Texas", hubs: ["Southwest Airlines (operating base)", "Delta Air Lines (focus city)"] },
   { code: "RDU", name: "Raleigh-Durham International", city: "Raleigh", lat: 35.8776, lng: -78.7875, state: "North Carolina", hubs: ["Delta Air Lines (focus city)"] },
   { code: "CVG", name: "Cincinnati/Northern Kentucky International", city: "Cincinnati", lat: 39.0489, lng: -84.6678, state: "Kentucky", hubs: ["Delta Air Lines (former hub, major focus city)"] },
+  { code: "STL", name: "Lambert St. Louis International", city: "St. Louis", lat: 38.7487, lng: -90.3700, state: "Missouri", hubs: ["Southwest Airlines (focus city)"] },
 ];
 
 // Generic words stripped from the airport name to derive a short, recognizable
