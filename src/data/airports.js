@@ -37,6 +37,12 @@ export const airports = [
   { code: "MCO", name: "Orlando International", city: "Orlando", lat: 28.4312, lng: -81.3081, state: "Florida", hubs: ["Southwest Airlines (focus city)", "Frontier Airlines (focus city)"] },
   { code: "BNA", name: "Nashville International", city: "Nashville", lat: 36.1245, lng: -86.6782, state: "Tennessee", hubs: ["Southwest Airlines (focus city)"] },
   { code: "CLE", name: "Cleveland Hopkins International", city: "Cleveland", lat: 41.4117, lng: -81.8498, state: "Ohio", hubs: ["Frontier Airlines (focus city)"] },
+  // Additional focus cities and regional hubs
+  { code: "HNL", name: "Daniel K. Inouye International", city: "Honolulu", lat: 21.3245, lng: -157.9251, state: "Hawaii", hubs: ["Alaska Airlines", "Hawaiian Airlines (now part of Alaska Air Group)"] },
+  { code: "SAT", name: "San Antonio International", city: "San Antonio", lat: 29.5337, lng: -98.4698, state: "Texas", hubs: ["Southwest Airlines (focus city)"] },
+  { code: "AUS", name: "Austin-Bergstrom International", city: "Austin", lat: 30.1975, lng: -97.6664, state: "Texas", hubs: ["Southwest Airlines (operating base)", "Delta Air Lines (focus city)"] },
+  { code: "RDU", name: "Raleigh-Durham International", city: "Raleigh", lat: 35.8776, lng: -78.7875, state: "North Carolina", hubs: ["Delta Air Lines (focus city)"] },
+  { code: "CVG", name: "Cincinnati/Northern Kentucky International", city: "Cincinnati", lat: 39.0489, lng: -84.6678, state: "Kentucky", hubs: ["Delta Air Lines (former hub, major focus city)"] },
 ];
 
 // Generic words stripped from the airport name to derive a short, recognizable

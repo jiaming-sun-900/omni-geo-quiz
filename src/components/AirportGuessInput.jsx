@@ -1,45 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { getAirportSuggestions } from "../data/airports";
 
-// Retro push-button styling (white bg, black border, hard offset shadow) for the
-// Hint button. Kept inline so no shared stylesheet is touched.
-const hintBtnStyle = {
-  padding: "0.7rem 1.4rem",
-  // Fixed width sized for the longest label ("Hint 2/2") so the button doesn't
-  // resize as the label changes and shove the input / Submit around.
-  minWidth: "8.5rem",
-  textAlign: "center",
-  fontSize: "1.1rem",
-  fontWeight: 600,
-  fontFamily: "inherit",
-  cursor: "pointer",
-  background: "#fff",
-  color: "#1a1a2e",
-  border: "2px solid #111",
-  borderRadius: "12px",
-  boxShadow: "3px 3px 0px #111",
-  transition: "transform 0.1s, box-shadow 0.1s",
-};
-
-const hintBtnDisabledStyle = {
-  ...hintBtnStyle,
-  opacity: 0.4,
-  cursor: "not-allowed",
-  color: "#888",
-  boxShadow: "1px 1px 0px #111",
-};
-
 // Floating tooltip bubble that hovers ABOVE the Hint button. Absolutely
 // positioned and given a high z-index so it overlaps page content instead of
-// pushing anything down or causing scroll. Fades/rises in whenever its text
-// changes. Inline styles keep the shared stylesheet untouched.
-function HintBubble({ text }) {
+// pushing anything down or causing scroll. Fades/rises in whenever the hint
+// changes (keyed by animKey, so passing JSX content doesn't re-trigger the fade
+// on every render). Inline styles keep the shared stylesheet untouched.
+function HintBubble({ animKey, content }) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
     setShown(false);
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
-  }, [text]);
+  }, [animKey]);
 
   return (
     <div
@@ -48,18 +21,18 @@ function HintBubble({ text }) {
         bottom: "100%",
         left: "50%",
         transform: `translateX(-50%) translateY(${shown ? "-10px" : "-4px"})`,
-        width: "260px",
+        width: "max-content",
         maxWidth: "70vw",
-        padding: "0.7rem 0.9rem",
+        padding: "0.75rem 1rem",
         background: "#fff",
         color: "#1a1a2e",
         border: "2px solid #111",
         borderRadius: "12px",
         boxShadow: "3px 3px 0px #111",
-        fontSize: "0.95rem",
+        fontSize: "1.08rem",
         fontWeight: 600,
         lineHeight: 1.35,
-        textAlign: "center",
+        textAlign: "left",
         whiteSpace: "normal",
         zIndex: 1000,
         pointerEvents: "none",
@@ -68,7 +41,7 @@ function HintBubble({ text }) {
       }}
       role="status"
     >
-      {text}
+      {content}
       {/* little tail pointing down at the button */}
       <span
         style={{
@@ -180,13 +153,11 @@ export default function AirportGuessInput({
   return (
     <form className="guess-form" onSubmit={handleSubmit} style={{ maxWidth: "600px" }}>
       <div style={{ position: "relative", display: "flex" }} ref={hintWrapRef}>
-        {hintOpen && hintText && <HintBubble text={hintText} />}
+        {hintOpen && hintText && <HintBubble animKey={hintLevel} content={hintText} />}
         <button
           type="button"
-          className="btn"
-          style={hintDisabled ? hintBtnDisabledStyle : hintBtnStyle}
+          className={`btn hint-btn${hintDisabled ? " maxed" : ""}`}
           onClick={onHint}
-          disabled={hintDisabled}
         >
           {hintLevel > 0 ? `Hint ${hintLevel}/2` : "Hint"}
         </button>

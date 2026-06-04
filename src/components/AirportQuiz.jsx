@@ -18,13 +18,6 @@ function pickAirport(usedIndices) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// "A" / "A and B" / "A, B, and C"
-function joinAirlines(list) {
-  if (list.length <= 1) return list.join("");
-  if (list.length === 2) return `${list[0]} and ${list[1]}`;
-  return `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
-}
-
 function Game({
   onHome,
   onRestart,
@@ -88,12 +81,26 @@ function Game({
   const closeHint = () => setHintOpen(false);
 
   const a = current.airport;
-  const hintText =
-    hintLevel === 1
-      ? `This airport is a hub for ${joinAirlines(a.hubs)}.`
-      : hintLevel === 2
-      ? `This airport is in ${a.state}.`
-      : null;
+  // Hint 1 (airlines): one airline -> single line; multiple -> bullet list.
+  // Hint 2 (state): single line.
+  let hintText = null;
+  if (hintLevel === 1) {
+    hintText =
+      a.hubs.length === 1 ? (
+        `This airport is a hub for ${a.hubs[0]}.`
+      ) : (
+        <>
+          This airport is a hub for:
+          <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1.4rem" }}>
+            {a.hubs.map((h) => (
+              <li key={h}>{h}</li>
+            ))}
+          </ul>
+        </>
+      );
+  } else if (hintLevel === 2) {
+    hintText = `This airport is in ${a.state}.`;
+  }
 
   const reveal = `${a.name} (${a.code}) — ${a.city}, ${a.state}`;
 
