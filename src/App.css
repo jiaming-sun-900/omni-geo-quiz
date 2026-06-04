@@ -27,6 +27,11 @@
   align-items: flex-start;
   padding: 0 2.5rem;
   box-sizing: border-box;
+  /* Sit above the globe canvas's transparent overflow, which spills out of the
+     left column into this one. Without this the invisible overflow would
+     intercept clicks/hover on the menu entries. */
+  position: relative;
+  z-index: 1;
 }
 
 /* Three.js rotating globe — sphere floats on the background, no border/ring */
@@ -43,26 +48,26 @@
   height: var(--disc);
   flex-shrink: 0;
   /* The canvas is drawn larger than this box (to fit Saturn's ring); let it
-     spill out instead of being clipped. Its transparent overflow extends well
-     past the disc (into the menu panel on the right), so the disc and canvas are
-     made click-through — otherwise that invisible overflow swallows clicks meant
-     for the menu entries. Interactive globe controls re-enable pointer events
-     individually below. */
+     spill out instead of being clipped. The disc box itself is click-through;
+     the canvas inside keeps pointer events so OrbitControls can drag-rotate.
+     The transparent canvas overflow that reaches into the menu column is handled
+     by stacking the menu (.home-right) above it — see that rule. */
   overflow: visible;
   pointer-events: none;
 }
 
 /* The oversized canvas is centered on the disc with negative margins so the
    sphere stays put while the extra room around it holds the ring. The soft
-   drop shadow follows the rendered alpha. pointer-events: none so the overflow
-   never blocks clicks on surrounding page UI. */
+   drop shadow follows the rendered alpha. pointer-events: auto so OrbitControls
+   receives drag events on the sphere; the menu sits above it (z-index) so the
+   canvas's invisible overflow can't swallow menu clicks. */
 .globe-disc canvas {
   display: block;
   width: 250%;
   height: 250%;
   margin: -75%;
   filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.28));
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* Reset-view button — matches the app's retro hard-shadow buttons. Positioned
