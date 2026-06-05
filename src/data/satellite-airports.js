@@ -18,7 +18,7 @@ export const satelliteAirports = [
   { code: "MDW", name: "Chicago Midway International", city: "Chicago", lat: 41.7868, lng: -87.7522, state: "Illinois" },
   { code: "HNL", name: "Daniel K. Inouye International", city: "Honolulu", lat: 21.3245, lng: -157.9251, state: "Hawaii" },
   { code: "ANC", name: "Ted Stevens Anchorage International", city: "Anchorage", lat: 61.1743, lng: -149.9963, state: "Alaska" },
-  { code: "STL", name: "Lambert St. Louis International", city: "St. Louis", lat: 38.7487, lng: -90.3700, state: "Missouri" },
+  { code: "STL", name: "St. Louis Lambert International", city: "St. Louis", lat: 38.7487, lng: -90.3700, state: "Missouri" },
   { code: "PIT", name: "Pittsburgh International", city: "Pittsburgh", lat: 40.4915, lng: -80.2329, state: "Pennsylvania" },
   { code: "CMH", name: "John Glenn Columbus International", city: "Columbus", lat: 39.9980, lng: -82.8919, state: "Ohio" },
   { code: "MCI", name: "Kansas City International", city: "Kansas City", lat: 39.2976, lng: -94.7139, state: "Missouri" },

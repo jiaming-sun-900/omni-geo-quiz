@@ -69,6 +69,7 @@ export default function AirportGuessInput({
   hintLevel,
   hintOpen,
   hintText,
+  getSuggestions = getAirportSuggestions,
 }) {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -110,7 +111,7 @@ export default function AirportGuessInput({
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
 
-  const suggestions = getAirportSuggestions(value);
+  const suggestions = getSuggestions(value);
 
   const handleChange = (e) => {
     const v = e.target.value;
