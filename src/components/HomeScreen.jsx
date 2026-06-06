@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Globe from "./Globe";
 
 const ENTRIES = [
@@ -17,6 +17,16 @@ export default function HomeScreen({ onSelectMode }) {
       onSelectMode(mode);
     }
   };
+
+  // Close the mode-selection modal (Airport / City) on Escape.
+  useEffect(() => {
+    if (!modalMode) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalMode(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modalMode]);
 
   return (
     <>

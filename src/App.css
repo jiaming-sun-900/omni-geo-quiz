@@ -399,8 +399,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Standard property only — Lightning CSS adds the -webkit- prefix at build
+     time (see vite.config.js). Hand-writing both makes the minifier drop one. */
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   background: rgba(250, 247, 244, 0.4);
 }
 
