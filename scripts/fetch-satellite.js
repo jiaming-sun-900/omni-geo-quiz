@@ -61,8 +61,8 @@ const AIRPORT_ZOOM_OVERRIDES = {
 const CITY_ZOOM_OVERRIDES = {
   "New York": 11, "Los Angeles": 11, "Chicago": 11, "San Jose": 11,
   "Austin": 11, "Jacksonville": 11, "Fort Worth": 11, "Anchorage": 11,
-  "Salt Lake City": 11, "San Diego": 11,
-  "Key West": 13, "Palm Springs": 13, "Boulder": 13, "Sarasota": 13,
+  "Salt Lake City": 11,
+  "Key West": 13, "Boulder": 13, "Sarasota": 13,
   "Providence": 13, "Boise": 13, "Atlanta": 13, "Charlotte": 13,
   "Indianapolis": 13, "Milwaukee": 13, "Pittsburgh": 13,
 };
@@ -76,6 +76,9 @@ const CITY_COORD_OVERRIDES = {
   "Milwaukee": { lat: 43.0389, lng: -87.8800 },
   "Philadelphia": { lat: 39.9200, lng: -75.1700 },
   "Detroit": { lat: 42.3100, lng: -83.0500 },
+  "San Diego": { lat: 32.7157, lng: -117.1611 },
+  "Houston": { lat: 29.7604, lng: -95.3698 },
+  "Charlotte": { lat: 35.2271, lng: -80.8431 },
 };
 
 // Target configs: each describes how to load entries, name output files, and
