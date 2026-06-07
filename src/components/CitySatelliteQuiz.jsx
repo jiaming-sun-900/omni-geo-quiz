@@ -167,7 +167,10 @@ function Game({ onHome, onRestart, onFinish }) {
       ? `This city is in the ${region}.`
       : `This city is in ${c.state}.`;
   } else if (hintLevel === 2) {
-    hintText = `This city is in ${c.state}.`;
+    hintText =
+      c.name === "St. Louis"
+        ? "This city is the home of the developer of this game 👨‍💻"
+        : `This city is in ${c.state}.`;
   }
 
   const reveal = `${c.name}, ${c.state}`;
