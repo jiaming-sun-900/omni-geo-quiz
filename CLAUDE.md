@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Omni Geo Quiz — a React + D3.js quiz app with two game modes (State Quiz, City Quiz) testing US geography knowledge. No backend; deployable to GitHub Pages.
+Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge through several game modes (State, City, Airport, and Airport Satellite). No backend; deployable to GitHub Pages. The home screen also features an interactive Three.js globe.
 
 ## Commands
 
@@ -22,9 +22,9 @@ Omni Geo Quiz — a React + D3.js quiz app with two game modes (State Quiz, City
 
 ## Architecture
 
-**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"`) to switch between HomeScreen and quiz components.
+**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"` | `"airport"` | `"airport-satellite"`) to switch between HomeScreen and quiz components.
 
-**USMap.jsx** is the shared map component used by both quiz modes. It renders an SVG with:
+**USMap.jsx** is the shared map component used by the map-based quiz modes (State, City, and the Airport Blank Map). It renders an SVG with:
 - All continental US state paths filled white with white stroke (no visible state borders)
 - A single national border outline (dark stroke)
 - An optional red dot at `dotPosition` (projected via AlbersUsa)
@@ -32,13 +32,69 @@ Omni Geo Quiz — a React + D3.js quiz app with two game modes (State Quiz, City
 
 It exports `states` (filtered GeoJSON features excluding AK, HI, and territories) for use by StateQuiz.
 
-**StateQuiz.jsx / CityQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `finalScore`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score)` to show ResultsScreen.
+**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `finalScore`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score)` to show ResultsScreen.
 
 **State Quiz point generation** (`utils/randomPoint.js`): picks the largest polygon of a state by bounding-box area, shrinks bounds by 10%, and rejection-samples up to 1000 times using point-in-polygon to guarantee the dot falls inside the state.
 
 **Fuzzy matching** (`utils/fuzzyMatch.js`): normalizes input (lowercase, strip punctuation), checks common abbreviations (DC, NYC, LA, etc.), then falls back to Levenshtein distance with a 25%-of-answer-length threshold.
 
-**City data** (`data/cities.js`): 52 hardcoded US cities with `{name, lat, lng, state}`. Coordinates are approximate city centers. This is the authoritative city list — add/remove entries here to change the City Quiz pool.
+**City data** (`data/cities.js`): 62 hardcoded US cities with `{name, lat, lng, state}`. Coordinates are approximate city centers. This is the authoritative city list — add/remove entries here to change the City Quiz pool.
+
+## Game Modes
+
+Selected from HomeScreen. The City and Airport tiles open a sub-mode modal (Blank Map
+vs. Satellite) before launching.
+
+- **US State Quiz** — blank Albers USA map, a random point inside a state; user guesses
+  the state name.
+- **US City Quiz** — same map, a red dot on a preset city from `src/data/cities.js`; user
+  guesses the city name. Sub-modes: **Blank Map** (active) and **Satellite** (disabled,
+  coming soon).
+- **US Airport Quiz** — same map, a red dot on a preset airport from
+  `src/data/airports.js`; user guesses the airport code or city. Sub-modes: **Blank Map**
+  and **Satellite**. Blank Map has a two-level hint system (level 1: airline hub →
+  level 2: state). The Satellite sub-mode launches the Airport Satellite Quiz below.
+- **Airport Satellite Quiz** (`AirportSatelliteQuiz.jsx`, mode `"airport-satellite"`) —
+  shows a satellite image from `public/satellite/airports/{CODE}.jpg`, drawn from the
+  curated `src/data/satellite-airports.js` pool; user guesses the airport. Two-level
+  hints reveal region (US Census-style) then state.
+
+## Data Files
+
+- **`src/data/cities.js`** — 62 US cities with `{name, lat, lng, state}` (plus
+  abbreviation/suggestion helpers). Authoritative City Quiz pool.
+- **`src/data/airports.js`** — 37 US airports with `{code, name, city, lat, lng, state, hubs}`.
+- **`src/data/satellite-airports.js`** — 28 airports curated for visual distinctiveness,
+  the pool for the Airport Satellite Quiz.
+- **`src/data/satellite-cities.js`** — all cities (mirrors `cities.js`, fields
+  `{name, lat, lng, state}`) for the City Satellite mode (in progress; no images fetched
+  yet).
+
+## Satellite Imagery
+
+- Images are stored in `public/satellite/airports/` and `public/satellite/cities/`.
+- Generated via `scripts/fetch-satellite.js` using the Google Maps Static API.
+- Run with: `GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=airports`
+  (default) or `--target=cities`.
+- Requests use `scale=2` with `size=640x640` (1280×1280 px output), `maptype=satellite`,
+  north-up orientation. Per-entry zoom overrides live in the script. Re-runs skip images
+  that already exist.
+- Airport files are named `{CODE}.jpg`; city files are `{CityName}.jpg` with spaces →
+  underscores, and a `_{State}` suffix is appended to duplicate city names (e.g. Portland)
+  to avoid collisions.
+
+## Key Technical Notes
+
+- **CSS minification**: `vite.config.js` uses Lightning CSS (`transformer` and
+  `cssMinify`) so the modal's `backdrop-filter` keeps both the standard property and an
+  emitted `-webkit-` prefix. The default esbuild minifier collapsed the hand-written pair
+  to just `-webkit-`, breaking the blur in Firefox.
+- **Globe** (`Globe.jsx`): Three.js with `OrbitControls`, delta-time rotation (frame-rate
+  independent), cycling through five planets (Earth, Mars, Jupiter, Saturn, Neptune).
+  Earth uses a locally-painted canvas texture; the others lazy-load equirectangular
+  photos, and Saturn renders a 3D ring.
+- All quiz screens share the same retro button style documented in the Design System
+  section below.
 
 ## Design System
 
