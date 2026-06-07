@@ -4,6 +4,7 @@ import StateQuiz from "./components/StateQuiz";
 import CityQuiz from "./components/CityQuiz";
 import AirportQuiz from "./components/AirportQuiz";
 import AirportSatelliteQuiz from "./components/AirportSatelliteQuiz";
+import CitySatelliteQuiz from "./components/CitySatelliteQuiz";
 import "./App.css";
 
 export default function App() {
@@ -14,5 +15,7 @@ export default function App() {
   if (mode === "airport") return <AirportQuiz onHome={() => setMode(null)} />;
   if (mode === "airport-satellite")
     return <AirportSatelliteQuiz onHome={() => setMode(null)} />;
+  if (mode === "city-satellite")
+    return <CitySatelliteQuiz onHome={() => setMode(null)} />;
   return <HomeScreen onSelectMode={setMode} />;
 }

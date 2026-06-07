@@ -70,6 +70,7 @@ export default function AirportGuessInput({
   hintOpen,
   hintText,
   getSuggestions = getAirportSuggestions,
+  placeholder = "IATA code or city...",
 }) {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -171,7 +172,7 @@ export default function AirportGuessInput({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => value.trim() && setOpen(true)}
-          placeholder="IATA code or city..."
+          placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
           autoFocus

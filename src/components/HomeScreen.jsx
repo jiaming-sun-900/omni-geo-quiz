@@ -76,20 +76,13 @@ export default function HomeScreen({ onSelectMode }) {
               </button>
             </div>
             <div className="mode-option">
-              {modalMode === "airport" ? (
-                <button
-                  className="mode-square"
-                  onClick={() => onSelectMode("airport-satellite")}
-                >
-                  <span className="mode-icon">🛰️</span>
-                  <span>Satellite</span>
-                </button>
-              ) : (
-                <div className="mode-square disabled">
-                  <span className="mode-icon">🛰️</span>
-                  <span>Satellite</span>
-                </div>
-              )}
+              <button
+                className="mode-square"
+                onClick={() => onSelectMode(`${modalMode}-satellite`)}
+              >
+                <span className="mode-icon">🛰️</span>
+                <span>Satellite</span>
+              </button>
             </div>
           </div>
         </div>
