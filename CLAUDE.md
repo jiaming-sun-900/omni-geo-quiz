@@ -22,7 +22,7 @@ Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge throug
 
 ## Architecture
 
-**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"` | `"airport"` | `"airport-satellite"`) to switch between HomeScreen and quiz components.
+**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"` | `"airport"` | `"airport-satellite"` | `"city-satellite"`) to switch between HomeScreen and quiz components.
 
 **USMap.jsx** is the shared map component used by the map-based quiz modes (State, City, and the Airport Blank Map). It renders an SVG with:
 - All continental US state paths filled white with white stroke (no visible state borders)
@@ -32,7 +32,7 @@ Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge throug
 
 It exports `states` (filtered GeoJSON features excluding AK, HI, and territories) for use by StateQuiz.
 
-**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `finalScore`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score)` to show ResultsScreen.
+**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx / CitySatelliteQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `finalScore`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score)` to show ResultsScreen.
 
 **State Quiz point generation** (`utils/randomPoint.js`): picks the largest polygon of a state by bounding-box area, shrinks bounds by 10%, and rejection-samples up to 1000 times using point-in-polygon to guarantee the dot falls inside the state.
 
@@ -48,8 +48,13 @@ vs. Satellite) before launching.
 - **US State Quiz** — blank Albers USA map, a random point inside a state; user guesses
   the state name.
 - **US City Quiz** — same map, a red dot on a preset city from `src/data/cities.js`; user
-  guesses the city name. Sub-modes: **Blank Map** (active) and **Satellite** (disabled,
-  coming soon).
+  guesses the city name. Sub-modes: **Blank Map** and **Satellite**. The Satellite
+  sub-mode launches the City Satellite Quiz below.
+- **City Satellite Quiz** (`CitySatelliteQuiz.jsx`, mode `"city-satellite"`) — shows a
+  satellite image from `public/satellite/cities/{imageFile}`, drawn from
+  `src/data/satellite-cities.js`; user guesses the city. Accepts the city name (fuzzy)
+  or common abbreviations (NYC, NOLA, DC, SF, LA); autocomplete and the reveal use the
+  `City, State` form. Two-level hints reveal region then state.
 - **US Airport Quiz** — same map, a red dot on a preset airport from
   `src/data/airports.js`; user guesses the airport code or city. Sub-modes: **Blank Map**
   and **Satellite**. Blank Map has a two-level hint system (level 1: airline hub →
@@ -59,6 +64,12 @@ vs. Satellite) before launching.
   curated `src/data/satellite-airports.js` pool; user guesses the airport. Two-level
   hints reveal region (US Census-style) then state.
 
+Both satellite quizzes share `AirportGuessInput` (it takes an optional `placeholder` and a
+custom `getSuggestions`) and the floating `FeedbackBubble` / hint-bubble behavior. Note the
+two quizzes use **different** region groupings: the Airport quiz uses Census-style regions;
+the City quiz uses a finer set (West Coast, Southwest, Mountain West, Midwest, South,
+Southeast, Northeast, Non-contiguous).
+
 ## Data Files
 
 - **`src/data/cities.js`** — 62 US cities with `{name, lat, lng, state}` (plus
@@ -66,9 +77,10 @@ vs. Satellite) before launching.
 - **`src/data/airports.js`** — 37 US airports with `{code, name, city, lat, lng, state, hubs}`.
 - **`src/data/satellite-airports.js`** — 28 airports curated for visual distinctiveness,
   the pool for the Airport Satellite Quiz.
-- **`src/data/satellite-cities.js`** — all cities (mirrors `cities.js`, fields
-  `{name, lat, lng, state}`) for the City Satellite mode (in progress; no images fetched
-  yet).
+- **`src/data/satellite-cities.js`** — all 62 cities (mirrors `cities.js`, fields
+  `{name, lat, lng, state, imageFile}`) — the pool for the City Satellite Quiz.
+  `imageFile` is the city name with spaces → underscores (the two Portlands carry a
+  `_Oregon` / `_Maine` suffix).
 
 ## Satellite Imagery
 
