@@ -59,11 +59,23 @@ const AIRPORT_ZOOM_OVERRIDES = {
 
 // Per-city zoom overrides; cities not listed use this target's default.
 const CITY_ZOOM_OVERRIDES = {
-  "New York": 11, "Los Angeles": 11, "Chicago": 11, "Houston": 11,
-  "Phoenix": 11, "Philadelphia": 11, "San Antonio": 11, "Dallas": 11,
-  "San Jose": 11, "Austin": 11, "Jacksonville": 11, "Fort Worth": 11,
+  "New York": 11, "Los Angeles": 11, "Chicago": 11, "San Jose": 11,
+  "Austin": 11, "Jacksonville": 11, "Fort Worth": 11, "Anchorage": 11,
+  "Salt Lake City": 11, "San Diego": 11,
   "Key West": 13, "Palm Springs": 13, "Boulder": 13, "Sarasota": 13,
-  "Providence": 13, "Boise": 13,
+  "Providence": 13, "Boise": 13, "Atlanta": 13, "Charlotte": 13,
+  "Indianapolis": 13, "Milwaukee": 13, "Pittsburgh": 13,
+};
+
+// Per-city center coordinate overrides; cities not listed use the lat/lng from
+// satellite-cities.js. Used to recenter the image on a more recognizable part
+// of the metro.
+const CITY_COORD_OVERRIDES = {
+  "Denver": { lat: 39.7527, lng: -104.9998 },
+  "Las Vegas": { lat: 36.1147, lng: -115.1728 },
+  "Milwaukee": { lat: 43.0389, lng: -87.8800 },
+  "Philadelphia": { lat: 39.9200, lng: -75.1700 },
+  "Detroit": { lat: 42.3100, lng: -83.0500 },
 };
 
 // Target configs: each describes how to load entries, name output files, and
@@ -78,7 +90,13 @@ const TARGETS = {
   },
   cities: {
     outDir: join(SAT_DIR, "cities"),
-    load: () => loadArray("satellite-cities.js", "satelliteCities"),
+    load: async () => {
+      const list = await loadArray("satellite-cities.js", "satelliteCities");
+      // Apply per-city coordinate overrides where present.
+      return list.map((c) =>
+        CITY_COORD_OVERRIDES[c.name] ? { ...c, ...CITY_COORD_OVERRIDES[c.name] } : c
+      );
+    },
     // Spaces -> underscores. Names shared by more than one city (e.g. Portland,
     // OR vs ME) get a state suffix so their images don't collide.
     fileName: (c, all) => {
