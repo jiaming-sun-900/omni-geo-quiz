@@ -92,7 +92,18 @@ function pickAirport(usedIndices) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function Game({ onHome, onRestart, onFinish }) {
+// Pick a random airport guaranteed to differ from the one currently shown. Used
+// by the "New Image" button, which doesn't touch the used-index set or the round.
+function pickDifferentAirport(currentIndex) {
+  let pick;
+  do {
+    const i = Math.floor(Math.random() * satelliteAirports.length);
+    pick = { airport: satelliteAirports[i], index: i };
+  } while (pick.index === currentIndex && satelliteAirports.length > 1);
+  return pick;
+}
+
+function Game({ onHome, onFinish }) {
   const usedIndices = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
@@ -126,6 +137,15 @@ function Game({ onHome, onRestart, onFinish }) {
       setHintOpen(false);
       setCurrent(pickAirport(usedIndices.current));
     }
+  };
+
+  // Swap in a different random image without advancing the round or changing the
+  // score. Only the shown airport and the hint state reset, so hints are fresh
+  // for the new image. The guess input is keyed on current.index, so it clears too.
+  const handleNewImage = () => {
+    setCurrent((cur) => pickDifferentAirport(cur.index));
+    setHintLevel(0);
+    setHintOpen(false);
   };
 
   // First click reopens an already-revealed hint; otherwise advance (capped at 2).
@@ -186,7 +206,7 @@ function Game({ onHome, onRestart, onFinish }) {
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
           <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
+          <button className="sq-box sq-restart" onClick={handleNewImage}>New Image</button>
         </div>
       </div>
 
@@ -244,6 +264,7 @@ function Game({ onHome, onRestart, onFinish }) {
         <div className="quiz-controls">
           <p className="prompt" style={{ fontWeight: 700 }}>Which airport is shown?</p>
           <AirportGuessInput
+            key={current.index}
             onSubmit={handleGuess}
             disabled={!!feedback}
             onHint={handleHint}
@@ -295,7 +316,6 @@ export default function AirportSatelliteQuiz({ onHome }) {
     <Game
       key={gameKey}
       onHome={onHome}
-      onRestart={restart}
       onFinish={setFinalScore}
     />
   );

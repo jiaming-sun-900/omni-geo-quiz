@@ -20,7 +20,6 @@ function pickAirport(usedIndices) {
 
 function Game({
   onHome,
-  onRestart,
   onFinish,
   showRivers,
   setShowRivers,
@@ -34,6 +33,9 @@ function Game({
   const [score, setScore] = useState(0);
   const [current, setCurrent] = useState(() => pickAirport(usedIndices.current));
   const [feedback, setFeedback] = useState(null);
+  // Bumped on each Shuffle; used as the guess input's key so remounting clears
+  // the field (the new target may repeat, so identity alone isn't reliable).
+  const [shuffleId, setShuffleId] = useState(0);
   // hintLevel: 0 = none shown yet, 1 = airline hub hint, 2 = state hint (max).
   // hintOpen: whether the bubble is currently visible. The level persists even
   // while the bubble is dismissed, so reopening shows the same hint. Both reset
@@ -64,6 +66,17 @@ function Game({
       setHintOpen(false);
       setCurrent(pickAirport(usedIndices.current));
     }
+  };
+
+  // Generate a new random target without advancing the round or changing the
+  // score. Resets the hint, clears feedback, and clears the input via the
+  // bumped shuffle key.
+  const handleShuffle = () => {
+    setCurrent(pickAirport(usedIndices.current));
+    setFeedback(null);
+    setHintLevel(0);
+    setHintOpen(false);
+    setShuffleId((n) => n + 1);
   };
 
   // Hint button: if the bubble was dismissed but a hint is already revealed,
@@ -134,7 +147,7 @@ function Game({
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
           <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
+          <button className="sq-box sq-restart" onClick={handleShuffle}>Shuffle</button>
         </div>
       </div>
 
@@ -191,6 +204,7 @@ function Game({
       <div className="quiz-controls">
         <p className="prompt">Which airport is marked by the red dot?</p>
         <AirportGuessInput
+          key={shuffleId}
           onSubmit={handleGuess}
           disabled={!!feedback}
           onHint={handleHint}
@@ -245,7 +259,6 @@ export default function AirportQuiz({ onHome }) {
     <Game
       key={gameKey}
       onHome={onHome}
-      onRestart={restart}
       onFinish={setFinalScore}
       showRivers={showRivers}
       setShowRivers={setShowRivers}

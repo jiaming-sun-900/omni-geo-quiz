@@ -110,7 +110,18 @@ function pickCity(usedIndices) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function Game({ onHome, onRestart, onFinish }) {
+// Pick a random city guaranteed to differ from the one currently shown. Used by
+// the "New Image" button, which doesn't touch the used-index set or the round.
+function pickDifferentCity(currentIndex) {
+  let pick;
+  do {
+    const i = Math.floor(Math.random() * satelliteCities.length);
+    pick = { city: satelliteCities[i], index: i };
+  } while (pick.index === currentIndex && satelliteCities.length > 1);
+  return pick;
+}
+
+function Game({ onHome, onFinish }) {
   const usedIndices = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
@@ -144,6 +155,15 @@ function Game({ onHome, onRestart, onFinish }) {
       setHintOpen(false);
       setCurrent(pickCity(usedIndices.current));
     }
+  };
+
+  // Swap in a different random image without advancing the round or changing the
+  // score. Only the shown city and the hint state reset, so hints are fresh for
+  // the new image. The guess input is keyed on current.index, so it clears too.
+  const handleNewImage = () => {
+    setCurrent((cur) => pickDifferentCity(cur.index));
+    setHintLevel(0);
+    setHintOpen(false);
   };
 
   // First click reopens an already-revealed hint; otherwise advance (capped at 2).
@@ -204,7 +224,7 @@ function Game({ onHome, onRestart, onFinish }) {
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
           <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
+          <button className="sq-box sq-restart" onClick={handleNewImage}>New Image</button>
         </div>
       </div>
 
@@ -264,6 +284,7 @@ function Game({ onHome, onRestart, onFinish }) {
             Which city is shown in the satellite image?
           </p>
           <AirportGuessInput
+            key={current.index}
             onSubmit={handleGuess}
             disabled={!!feedback}
             onHint={handleHint}
@@ -316,7 +337,6 @@ export default function CitySatelliteQuiz({ onHome }) {
     <Game
       key={gameKey}
       onHome={onHome}
-      onRestart={restart}
       onFinish={setFinalScore}
     />
   );

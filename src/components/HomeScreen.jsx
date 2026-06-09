@@ -5,6 +5,8 @@ const ENTRIES = [
   { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "state" },
   { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "city" },
   { num: "III.", icon: "✈️ 🇺🇸", name: "US Airport Quiz", mode: "airport" },
+  { num: "IV.", icon: "📍 🌍", name: "World City Quiz", soon: true },
+  { num: "V.", icon: "✈️ 🌍", name: "World Airport Quiz", soon: true },
 ];
 
 export default function HomeScreen({ onSelectMode }) {
@@ -50,13 +52,14 @@ export default function HomeScreen({ onSelectMode }) {
           {ENTRIES.map((e) => (
             <button
               key={e.num}
-              className="menu-row"
-              onClick={() => handleSelect(e.mode)}
+              className={`menu-row${e.soon ? " disabled" : ""}`}
+              onClick={() => !e.soon && handleSelect(e.mode)}
+              disabled={e.soon}
             >
               <span className="menu-num">{e.num}</span>
               <span className="menu-icon">{e.icon}</span>
               <span className="menu-name">{e.name}</span>
-              <span className="menu-tag">[ENTER]</span>
+              <span className="menu-tag">{e.soon ? "[SOON]" : "[ENTER]"}</span>
             </button>
           ))}
         </div>

@@ -21,7 +21,6 @@ function pickCity(usedIndices) {
 
 function Game({
   onHome,
-  onRestart,
   onFinish,
   showRivers,
   setShowRivers,
@@ -35,6 +34,9 @@ function Game({
   const [score, setScore] = useState(0);
   const [current, setCurrent] = useState(() => pickCity(usedIndices.current));
   const [feedback, setFeedback] = useState(null);
+  // Bumped on each Shuffle; used as the guess input's key so remounting clears
+  // the field (the new target may repeat, so identity alone isn't reliable).
+  const [shuffleId, setShuffleId] = useState(0);
   const scoreRef = useRef(0);
 
   const handleGuess = (guess) => {
@@ -59,6 +61,14 @@ function Game({
       setFeedback(null);
       setCurrent(pickCity(usedIndices.current));
     }
+  };
+
+  // Generate a new random target without advancing the round or changing the
+  // score. Clears feedback, and the input via the bumped shuffle key.
+  const handleShuffle = () => {
+    setCurrent(pickCity(usedIndices.current));
+    setFeedback(null);
+    setShuffleId((n) => n + 1);
   };
 
   // While the bubble is up, the next Enter press or click anywhere advances the
@@ -88,7 +98,7 @@ function Game({
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
           <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
+          <button className="sq-box sq-restart" onClick={handleShuffle}>Shuffle</button>
         </div>
       </div>
 
@@ -144,7 +154,7 @@ function Game({
 
       <div className="quiz-controls">
         <p className="prompt">Which city is the red dot in?</p>
-        <GuessInput onSubmit={handleGuess} disabled={!!feedback} />
+        <GuessInput key={shuffleId} onSubmit={handleGuess} disabled={!!feedback} />
       </div>
 
       {feedback && (
@@ -190,7 +200,6 @@ export default function CityQuiz({ onHome }) {
     <Game
       key={gameKey}
       onHome={onHome}
-      onRestart={restart}
       onFinish={setFinalScore}
       showRivers={showRivers}
       setShowRivers={setShowRivers}

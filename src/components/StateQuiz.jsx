@@ -16,7 +16,7 @@ function pickRound(usedIds) {
   return { state, point };
 }
 
-function Game({ onHome, onRestart, onFinish }) {
+function Game({ onHome, onFinish }) {
   const usedIds = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
@@ -25,6 +25,9 @@ function Game({ onHome, onRestart, onFinish }) {
   const [showRivers, setShowRivers] = useState(false);
   const [showMountains, setShowMountains] = useState(false);
   const [showBorders, setShowBorders] = useState(false);
+  // Bumped on each Shuffle; used as the guess input's key so remounting clears
+  // the field (the new target may repeat, so identity alone isn't reliable).
+  const [shuffleId, setShuffleId] = useState(0);
   const scoreRef = useRef(0);
 
   const handleGuess = (guess) => {
@@ -46,6 +49,14 @@ function Game({ onHome, onRestart, onFinish }) {
       setFeedback(null);
       setCurrent(pickRound(usedIds.current));
     }
+  };
+
+  // Generate a new random target without advancing the round or changing the
+  // score. Clears feedback, and the input via the bumped shuffle key.
+  const handleShuffle = () => {
+    setCurrent(pickRound(usedIds.current));
+    setFeedback(null);
+    setShuffleId((n) => n + 1);
   };
 
   // While the bubble is up, the next Enter press or click anywhere advances the
@@ -75,7 +86,7 @@ function Game({ onHome, onRestart, onFinish }) {
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
           <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart sq-emoji" onClick={onRestart}>🔄</button>
+          <button className="sq-box sq-restart" onClick={handleShuffle}>Shuffle</button>
         </div>
       </div>
 
@@ -132,7 +143,7 @@ function Game({ onHome, onRestart, onFinish }) {
 
       <div className="quiz-controls">
         <p className="prompt">Which state is the red dot in?</p>
-        <StateGuessInput onSubmit={handleGuess} disabled={!!feedback} />
+        <StateGuessInput key={shuffleId} onSubmit={handleGuess} disabled={!!feedback} />
       </div>
 
       {feedback && (
@@ -169,5 +180,5 @@ export default function StateQuiz({ onHome }) {
     );
   }
 
-  return <Game key={gameKey} onHome={onHome} onRestart={restart} onFinish={setFinalScore} />;
+  return <Game key={gameKey} onHome={onHome} onFinish={setFinalScore} />;
 }
