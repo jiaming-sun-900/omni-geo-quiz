@@ -69,6 +69,7 @@ export default function AirportGuessInput({
   hintLevel,
   hintOpen,
   hintText,
+  hintMax = 2,
   getSuggestions = getAirportSuggestions,
   placeholder = "IATA code or city...",
 }) {
@@ -161,7 +162,7 @@ export default function AirportGuessInput({
           className={`btn hint-btn${hintDisabled ? " maxed" : ""}`}
           onClick={onHint}
         >
-          {hintLevel > 0 ? `Hint ${hintLevel}/2` : "Hint"}
+          {hintLevel > 0 ? `Hint ${hintLevel}/${hintMax}` : "Hint"}
         </button>
       </div>
       <div className="autocomplete-wrapper" ref={wrapperRef}>

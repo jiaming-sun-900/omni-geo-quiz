@@ -1,16 +1,19 @@
 // Downloads satellite images using the Google Maps Static API.
 //
-// Two targets:
+// Three targets:
 //   airports (default) — every airport in src/data/airports.js and
 //     src/data/satellite-airports.js (deduplicated by IATA code), saved to
 //     public/satellite/airports/{CODE}.jpg.
 //   cities — every city in src/data/satellite-cities.js, saved to
 //     public/satellite/cities/{CITYNAME}.jpg where CITYNAME is the city name
 //     with spaces replaced by underscores (e.g. New_York.jpg).
+//   world-cities — every city in src/data/satellite-world-cities.js, saved to
+//     public/satellite/world-cities/{imageFile} (City_Country.jpg).
 //
 // Usage:
 //   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js
 //   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=cities
+//   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=world-cities
 //
 // Safe to re-run: existing images are skipped.
 
@@ -67,6 +70,35 @@ const CITY_ZOOM_OVERRIDES = {
   "Indianapolis": 13, "Milwaukee": 13, "Pittsburgh": 13,
 };
 
+// Per-world-city zoom, seeded directly from the roster's zoom-tier column in
+// world-city-quiz-roster.md:
+//   紧凑地标型 (single iconic landmark) -> 15
+//   街区网络型 (street grid / canal / river bend) -> 13
+//   大尺度地貌型 (coastline / harbor / mountain backdrop) -> 12
+// Expect several review rounds; adjust these per-city as Jiaming sends notes.
+const WORLD_CITY_ZOOM_OVERRIDES = {
+  // 紧凑地标型 -> 15
+  Osaka: 15, Kyoto: 15, Singapore: 15, Dubai: 15, Doha: 15, Agra: 15,
+  "Kuala Lumpur": 15, Frankfurt: 15, Moscow: 15, Cairo: 15, Casablanca: 15,
+  Sydney: 15,
+  // 街区网络型 -> 13
+  Beijing: 13, Shanghai: 13, Tokyo: 13, Seoul: 13, Bangkok: 13, Hanoi: 13,
+  Paris: 13, Venice: 13, Rome: 13, Milan: 13, London: 13, Munich: 13,
+  Barcelona: 13, Amsterdam: 13, Vienna: 13, Prague: 13, Toronto: 13,
+  "Mexico City": 13, "São Paulo": 13, "Buenos Aires": 13, Marrakech: 13,
+  Zanzibar: 13, Melbourne: 13, "Gold Coast": 13,
+  // 大尺度地貌型 -> 12
+  "Hong Kong": 12, Mumbai: 12, Istanbul: 12, Santorini: 12, Reykjavik: 12,
+  Vancouver: 12, Havana: 12, "Panama City": 12, "Rio de Janeiro": 12,
+  Santiago: 12, Cartagena: 12, "La Paz": 12, "Cape Town": 12, Nairobi: 12,
+  Lagos: 12, Auckland: 12, Wellington: 12, Nadi: 12,
+};
+
+// Per-world-city center coordinate overrides; entries not listed use the lat/lng
+// from satellite-world-cities.js. Kept available for manual per-city recentering
+// across the expected review rounds (none needed on the first pass).
+const WORLD_CITY_COORD_OVERRIDES = {};
+
 // Per-city center coordinate overrides; cities not listed use the lat/lng from
 // satellite-cities.js. Used to recenter the image on a more recognizable part
 // of the metro.
@@ -110,6 +142,20 @@ const TARGETS = {
     label: (c) => c.name,
     zoom: (c) => CITY_ZOOM_OVERRIDES[c.name] ?? 12,
   },
+  "world-cities": {
+    outDir: join(SAT_DIR, "world-cities"),
+    load: async () => {
+      const list = await loadArray("satellite-world-cities.js", "satelliteWorldCities");
+      return list.map((c) =>
+        WORLD_CITY_COORD_OVERRIDES[c.name] ? { ...c, ...WORLD_CITY_COORD_OVERRIDES[c.name] } : c
+      );
+    },
+    // Output name is the entry's imageFile (City_Country.jpg), already encoded in
+    // the data file.
+    fileName: (c) => c.imageFile,
+    label: (c) => c.name,
+    zoom: (c) => WORLD_CITY_ZOOM_OVERRIDES[c.name] ?? 13,
+  },
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -121,7 +167,7 @@ function parseTarget() {
   const arg = process.argv.slice(2).find((a) => a.startsWith("--target="));
   const name = arg ? arg.slice("--target=".length) : "airports";
   if (!TARGETS[name]) {
-    console.error(`Unknown --target="${name}". Use "airports" or "cities".`);
+    console.error(`Unknown --target="${name}". Use "airports", "cities", or "world-cities".`);
     process.exit(1);
   }
   return TARGETS[name];
