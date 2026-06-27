@@ -5,10 +5,10 @@ const ENTRIES = [
   { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "state" },
   { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "city" },
   { num: "III.", icon: "✈️ 🇺🇸", name: "US Airport Quiz", mode: "airport" },
-  // Mode IV is satellite-only (no Blank Map submode), so it skips the
-  // submode-selection modal and launches the game directly.
+  // Modes IV and V are satellite-only (no Blank Map submode), so they skip the
+  // submode-selection modal and launch the game directly.
   { num: "IV.", icon: "📍 🌍", name: "World City Quiz", mode: "world-city-satellite" },
-  { num: "V.", icon: "✈️ 🌍", name: "World Airport Quiz", soon: true },
+  { num: "V.", icon: "✈️ 🌍", name: "World Airport Quiz", mode: "world-airport-satellite" },
 ];
 
 export default function HomeScreen({ onSelectMode }) {

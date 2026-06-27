@@ -6,6 +6,7 @@ import AirportQuiz from "./components/AirportQuiz";
 import AirportSatelliteQuiz from "./components/AirportSatelliteQuiz";
 import CitySatelliteQuiz from "./components/CitySatelliteQuiz";
 import WorldCitySatelliteQuiz from "./components/WorldCitySatelliteQuiz";
+import WorldAirportSatelliteQuiz from "./components/WorldAirportSatelliteQuiz";
 import "./App.css";
 
 export default function App() {
@@ -20,5 +21,7 @@ export default function App() {
     return <CitySatelliteQuiz onHome={() => setMode(null)} />;
   if (mode === "world-city-satellite")
     return <WorldCitySatelliteQuiz onHome={() => setMode(null)} />;
+  if (mode === "world-airport-satellite")
+    return <WorldAirportSatelliteQuiz onHome={() => setMode(null)} />;
   return <HomeScreen onSelectMode={setMode} />;
 }

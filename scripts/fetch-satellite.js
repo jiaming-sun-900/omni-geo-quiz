@@ -9,11 +9,14 @@
 //     with spaces replaced by underscores (e.g. New_York.jpg).
 //   world-cities — every city in src/data/satellite-world-cities.js, saved to
 //     public/satellite/world-cities/{imageFile} (City_Country.jpg).
+//   world-airports — every airport in src/data/satellite-world-airports.js,
+//     saved to public/satellite/world-airports/{imageFile} ({IATA}.jpg).
 //
 // Usage:
 //   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js
 //   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=cities
 //   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=world-cities
+//   GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=world-airports
 //
 // Safe to re-run: existing images are skipped.
 
@@ -99,6 +102,36 @@ const WORLD_CITY_ZOOM_OVERRIDES = {
 // across the expected review rounds (none needed on the first pass).
 const WORLD_CITY_COORD_OVERRIDES = {};
 
+// Per-world-airport zoom, seeded directly from the roster's zoom-tier column in
+// world-airport-quiz-roster.md. The default is 13 (标准枢纽型 / standard hub), so
+// only the compact and mega-hub airports are listed here:
+//   紧凑跑道型 (compact / single runway) -> 14
+//   大型复合型 (large complex / mega-hub / artificial island) -> 12
+// Expect several review rounds; adjust these per-airport as Jiaming sends notes.
+const WORLD_AIRPORT_ZOOM_OVERRIDES = {
+  // 大型复合型 -> 12
+  PKX: 12, HKG: 12, HND: 12, ICN: 12, KUL: 12, AUH: 12, IST: 12, GIG: 12,
+  SYD: 12,
+  // 紧凑跑道型 -> 14
+  SHA: 14, ITM: 14, DPS: 14, LGW: 14, YUL: 14, SCL: 14, LIM: 14, CPT: 14,
+  AKL: 14,
+  // Round 2 image-review adjustments (off their seeded tier):
+  //   12 -> 13 (framed too wide): AMS, BKK, CDG, CGK, DEL, DXB, FCO, FRA, KIX,
+  //     LHR, SIN, YYZ, MAD — dropped from the map so they take the default 13.
+  //   13 -> 12 (framed too tight): KEF
+  //   13 -> 14 (framed too loose): CTS
+  KEF: 12, CTS: 14,
+};
+
+// Per-world-airport center coordinate overrides; entries not listed use the
+// lat/lng from satellite-world-airports.js.
+const WORLD_AIRPORT_COORD_OVERRIDES = {
+  // Round 2 image-review nudges.
+  ARN: { lat: 59.6498, lng: 17.9439 }, // longitude +0.02 east
+  CTS: { lat: 42.7802, lng: 141.6773 }, // R2 +0.02 N, then R3 -0.015 SW (lat & lng)
+  MAD: { lat: 40.4919, lng: -3.5626 }, // latitude +0.02 north
+};
+
 // Per-city center coordinate overrides; cities not listed use the lat/lng from
 // satellite-cities.js. Used to recenter the image on a more recognizable part
 // of the metro.
@@ -156,6 +189,20 @@ const TARGETS = {
     label: (c) => c.name,
     zoom: (c) => WORLD_CITY_ZOOM_OVERRIDES[c.name] ?? 13,
   },
+  "world-airports": {
+    outDir: join(SAT_DIR, "world-airports"),
+    load: async () => {
+      const list = await loadArray("satellite-world-airports.js", "satelliteWorldAirports");
+      return list.map((a) =>
+        WORLD_AIRPORT_COORD_OVERRIDES[a.iata] ? { ...a, ...WORLD_AIRPORT_COORD_OVERRIDES[a.iata] } : a
+      );
+    },
+    // Output name is the entry's imageFile ({IATA}.jpg), already encoded in the
+    // data file.
+    fileName: (a) => a.imageFile,
+    label: (a) => a.iata,
+    zoom: (a) => WORLD_AIRPORT_ZOOM_OVERRIDES[a.iata] ?? 13,
+  },
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -167,7 +214,7 @@ function parseTarget() {
   const arg = process.argv.slice(2).find((a) => a.startsWith("--target="));
   const name = arg ? arg.slice("--target=".length) : "airports";
   if (!TARGETS[name]) {
-    console.error(`Unknown --target="${name}". Use "airports", "cities", or "world-cities".`);
+    console.error(`Unknown --target="${name}". Use "airports", "cities", "world-cities", or "world-airports".`);
     process.exit(1);
   }
   return TARGETS[name];
