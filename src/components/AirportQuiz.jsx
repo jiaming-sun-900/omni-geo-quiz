@@ -3,6 +3,7 @@ import USMap from "./USMap";
 import AirportGuessInput from "./AirportGuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
+import { airportWikiQuery } from "../utils/reviewLinks";
 import { airports, matchAirport } from "../data/airports";
 
 const TOTAL_ROUNDS = 10;
@@ -43,6 +44,8 @@ function Game({
   const [hintLevel, setHintLevel] = useState(0);
   const [hintOpen, setHintOpen] = useState(false);
   const scoreRef = useRef(0);
+  // One entry per answered round, handed to ResultsScreen at the end.
+  const reviewRef = useRef([]);
 
   const handleGuess = (guess) => {
     const correct = matchAirport(guess, current.airport);
@@ -51,6 +54,16 @@ function Game({
       setScore(next);
       scoreRef.current = next;
     }
+    // Recorded for the end-of-game review (see ResultsScreen).
+    reviewRef.current.push({
+      round,
+      correct,
+      guess,
+      answer: `${current.airport.name} (${current.airport.code}) — ${current.airport.city}, ${current.airport.state}`,
+      wiki: airportWikiQuery(current.airport.name),
+      lat: current.airport.lat,
+      lng: current.airport.lng,
+    });
     setFeedback({ correct });
     setHintOpen(false);
     usedIndices.current.add(current.index);
@@ -58,7 +71,7 @@ function Game({
 
   const handleNext = () => {
     if (round >= TOTAL_ROUNDS) {
-      onFinish(scoreRef.current);
+      onFinish(scoreRef.current, reviewRef.current);
     } else {
       setRound((r) => r + 1);
       setFeedback(null);
@@ -229,7 +242,8 @@ function Game({
 
 export default function AirportQuiz({ onHome }) {
   const [gameKey, setGameKey] = useState(0);
-  const [finalScore, setFinalScore] = useState(null);
+  // { score, review } — null until the last round is answered.
+  const [result, setResult] = useState(null);
   // Toggle state lives here (above the gameKey remount) so Start Over resets
   // score/round but preserves the overlay toggles.
   const [showRivers, setShowRivers] = useState(false);
@@ -237,15 +251,16 @@ export default function AirportQuiz({ onHome }) {
   const [showBorders, setShowBorders] = useState(false);
 
   const restart = () => {
-    setFinalScore(null);
+    setResult(null);
     setGameKey((k) => k + 1);
   };
 
-  if (finalScore !== null) {
+  if (result) {
     return (
       <ResultsScreen
-        score={finalScore}
+        score={result.score}
         total={TOTAL_ROUNDS}
+        review={result.review}
         onPlayAgain={restart}
         onHome={onHome}
       />
@@ -256,7 +271,7 @@ export default function AirportQuiz({ onHome }) {
     <Game
       key={gameKey}
       onHome={onHome}
-      onFinish={setFinalScore}
+      onFinish={(score, review) => setResult({ score, review })}
       showRivers={showRivers}
       setShowRivers={setShowRivers}
       showMountains={showMountains}

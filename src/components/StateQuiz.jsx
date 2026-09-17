@@ -8,6 +8,18 @@ import { matchesState } from "../data/states";
 
 const TOTAL_ROUNDS = 10;
 
+// Wikipedia resolves a bare state name for 48 of the 50 (it redirects e.g.
+// "New York" to "New York (state)"). These two are disambiguation pages instead,
+// so the review link spells out the article title.
+const WIKI_TITLE = {
+  Georgia: "Georgia (U.S. state)",
+  Washington: "Washington (state)",
+};
+
+function wikiTitleForState(name) {
+  return WIKI_TITLE[name] || name;
+}
+
 function pickRound(usedIds) {
   const available = states.filter((s) => !usedIds.has(s.id));
   const pool = available.length > 0 ? available : states;
@@ -29,6 +41,8 @@ function Game({ onHome, onFinish }) {
   // the field (the new target may repeat, so identity alone isn't reliable).
   const [shuffleId, setShuffleId] = useState(0);
   const scoreRef = useRef(0);
+  // One entry per answered round, handed to ResultsScreen at the end.
+  const reviewRef = useRef([]);
 
   const handleGuess = (guess) => {
     const correct = matchesState(guess, current.state.properties.name);
@@ -37,13 +51,23 @@ function Game({ onHome, onFinish }) {
       setScore(next);
       scoreRef.current = next;
     }
+    // Recorded for the end-of-game review (see ResultsScreen).
+    reviewRef.current.push({
+      round,
+      correct,
+      guess,
+      answer: current.state.properties.name,
+      wiki: wikiTitleForState(current.state.properties.name),
+      lng: current.point[0],
+      lat: current.point[1],
+    });
     setFeedback({ correct, answer: current.state.properties.name });
     usedIds.current.add(current.state.id);
   };
 
   const handleNext = () => {
     if (round >= TOTAL_ROUNDS) {
-      onFinish(scoreRef.current);
+      onFinish(scoreRef.current, reviewRef.current);
     } else {
       setRound((r) => r + 1);
       setFeedback(null);
@@ -162,23 +186,25 @@ function Game({ onHome, onFinish }) {
 
 export default function StateQuiz({ onHome }) {
   const [gameKey, setGameKey] = useState(0);
-  const [finalScore, setFinalScore] = useState(null);
+  // { score, review } — null until the last round is answered.
+  const [result, setResult] = useState(null);
 
   const restart = () => {
-    setFinalScore(null);
+    setResult(null);
     setGameKey((k) => k + 1);
   };
 
-  if (finalScore !== null) {
+  if (result) {
     return (
       <ResultsScreen
-        score={finalScore}
+        score={result.score}
         total={TOTAL_ROUNDS}
+        review={result.review}
         onPlayAgain={restart}
         onHome={onHome}
       />
     );
   }
 
-  return <Game key={gameKey} onHome={onHome} onFinish={setFinalScore} />;
+  return <Game key={gameKey} onHome={onHome} onFinish={(score, review) => setResult({ score, review })} />;
 }

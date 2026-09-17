@@ -38,6 +38,8 @@ function Game({
   // the field (the new target may repeat, so identity alone isn't reliable).
   const [shuffleId, setShuffleId] = useState(0);
   const scoreRef = useRef(0);
+  // One entry per answered round, handed to ResultsScreen at the end.
+  const reviewRef = useRef([]);
 
   const handleGuess = (guess) => {
     const correct = fuzzyMatch(guess, current.city.name);
@@ -46,6 +48,18 @@ function Game({
       setScore(next);
       scoreRef.current = next;
     }
+    // Recorded for the end-of-game review (see ResultsScreen).
+    reviewRef.current.push({
+      round,
+      correct,
+      guess,
+      answer: `${current.city.name}, ${current.city.state}`,
+      // Wikipedia redirects "Denver, Colorado" to "Denver", so the
+      // City, State form resolves for both naming conventions.
+      wiki: `${current.city.name}, ${current.city.state}`,
+      lat: current.city.lat,
+      lng: current.city.lng,
+    });
     setFeedback({
       correct,
       answer: `${current.city.name}, ${current.city.state}`,
@@ -55,7 +69,7 @@ function Game({
 
   const handleNext = () => {
     if (round >= TOTAL_ROUNDS) {
-      onFinish(scoreRef.current);
+      onFinish(scoreRef.current, reviewRef.current);
     } else {
       setRound((r) => r + 1);
       setFeedback(null);
@@ -173,7 +187,8 @@ function Game({
 
 export default function CityQuiz({ onHome }) {
   const [gameKey, setGameKey] = useState(0);
-  const [finalScore, setFinalScore] = useState(null);
+  // { score, review } — null until the last round is answered.
+  const [result, setResult] = useState(null);
   // Toggle state lives here (above the gameKey remount) so Start Over resets
   // score/round but preserves the overlay toggles.
   const [showRivers, setShowRivers] = useState(false);
@@ -181,15 +196,16 @@ export default function CityQuiz({ onHome }) {
   const [showBorders, setShowBorders] = useState(false);
 
   const restart = () => {
-    setFinalScore(null);
+    setResult(null);
     setGameKey((k) => k + 1);
   };
 
-  if (finalScore !== null) {
+  if (result) {
     return (
       <ResultsScreen
-        score={finalScore}
+        score={result.score}
         total={TOTAL_ROUNDS}
+        review={result.review}
         onPlayAgain={restart}
         onHome={onHome}
       />
@@ -200,7 +216,7 @@ export default function CityQuiz({ onHome }) {
     <Game
       key={gameKey}
       onHome={onHome}
-      onFinish={setFinalScore}
+      onFinish={(score, review) => setResult({ score, review })}
       showRivers={showRivers}
       setShowRivers={setShowRivers}
       showMountains={showMountains}

@@ -913,8 +913,24 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem;
+  /* The one screen in the app that is allowed to scroll: the review list below
+     the score is worth more than a no-scroll guarantee. Top-aligned rather than
+     centered, so the summary can't be pushed out of scroll reach. */
+  justify-content: flex-start;
+  padding: 2rem calc(1.25rem + var(--safe-right)) calc(2rem + var(--safe-bottom))
+    calc(1.25rem + var(--safe-left));
+  padding-top: calc(2rem + var(--safe-top));
+}
+
+/* Score + buttons. `margin-top: auto` (paired with the review block's
+   `margin-bottom: auto`) centers the pair vertically when it fits and collapses
+   to zero when it doesn't — the same collapse-safe centering as .home-screen. */
+.results-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .results-screen h2 {
@@ -981,6 +997,169 @@
 
 .results-home {
   font-size: 1.8rem;
+}
+
+/* ---- End-of-game review ----
+   Every round, misses first. The highest-value moment in a quiz is the "so what
+   WAS it" pass, so this sits directly under the score rather than behind a
+   button. */
+.results-review {
+  width: 100%;
+  max-width: 40rem;
+  margin: 2.25rem auto auto;
+  flex-shrink: 0;
+}
+
+.review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.review-head h3 {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.review-count {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #888;
+}
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* Columns: round number · thumbnail (or ✓/✗ when the mode has no image) · text */
+.review-row {
+  display: grid;
+  grid-template-columns: 1.9rem auto 1fr;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #111;
+  text-align: left;
+}
+
+/* A missed round gets the full-strength treatment; a correct one is deliberately
+   quieter, so the list reads as "here are your misses" at a glance while still
+   confirming the rest. */
+.review-row.is-missed {
+  border-left-width: 7px;
+  border-left-color: #e53e3e;
+}
+
+.review-row.is-correct {
+  /* border-color first: it is a shorthand and resets all four sides, so setting
+     it after border-left-color would wipe the green edge out. */
+  border-color: #cfcabf;
+  border-left-width: 7px;
+  border-left-color: #48a14d;
+  box-shadow: 3px 3px 0px #d8d2c6;
+}
+
+.review-round {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #888;
+  text-align: right;
+}
+
+/* In the satellite modes the thumbnail takes the ✓/✗ column, so the round number
+   carries the right/wrong signal instead. */
+.review-row.is-missed .review-round {
+  color: #e53e3e;
+}
+
+.review-thumb {
+  display: block;
+  width: 3.6rem;
+  height: 3.6rem;
+  object-fit: cover;
+  border: 2px solid #1a1a1a;
+  border-radius: 8px;
+}
+
+/* Stands in for the thumbnail in the map-based modes, keeping the columns aligned. */
+.review-mark {
+  width: 3.6rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.review-row.is-missed .review-mark {
+  color: #e53e3e;
+}
+
+.review-row.is-correct .review-mark {
+  color: #48a14d;
+}
+
+.review-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.review-answer {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1.25;
+}
+
+.review-guess {
+  font-size: 0.88rem;
+  color: #9b2c2c;
+}
+
+.review-guess em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* "Explore more" links — quieter than a button, but still a real target. */
+.review-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.3rem;
+}
+
+.review-links a {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  text-decoration: none;
+  border-bottom: 1.5px solid #ccc;
+  padding-bottom: 1px;
+  white-space: nowrap;
+}
+
+.review-links a:hover {
+  color: #1a1a2e;
+  border-bottom-color: #1a1a2e;
 }
 
 /* State Quiz — redesigned header (scoped via .state-quiz) */
@@ -1630,6 +1809,29 @@ button.sq-box:hover {
     width: 130px;
     height: 50px;
   }
+
+  .results-review {
+    margin-top: 1.5rem;
+  }
+
+  .review-row {
+    grid-template-columns: 1.5rem auto 1fr;
+    gap: 0.6rem;
+    padding: 0.6rem 0.7rem;
+  }
+
+  .review-thumb,
+  .review-mark {
+    width: 3rem;
+  }
+
+  .review-thumb {
+    height: 3rem;
+  }
+
+  .review-answer {
+    font-size: 0.92rem;
+  }
 }
 
 /* ---------- Tier 4: small & landscape phones ---------- */
@@ -1831,6 +2033,14 @@ button.sq-box:hover {
     font-size: 1rem;
     margin-bottom: 1rem;
   }
+
+  .results-review {
+    margin-top: 1.25rem;
+  }
+
+  .review-row {
+    padding: 0.5rem 0.7rem;
+  }
 }
 
 /* Short windows, two-column home (>900px wide): a short desktop window or a
@@ -1942,6 +2152,16 @@ button.sq-box:hover {
   .push-toggle {
     min-height: 34px;
     padding: 0.4rem 0.6rem;
+  }
+
+  /* The review links are text, not buttons, so they need padding rather than a
+     min-height to become finger-sized without changing how they look. */
+  .review-links {
+    gap: 0.25rem 0.9rem;
+  }
+
+  .review-links a {
+    padding: 0.35rem 0 0.3rem;
   }
 
   .globe-reset {

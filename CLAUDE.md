@@ -32,7 +32,23 @@ Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge throug
 
 It exports `states` (filtered GeoJSON features excluding AK, HI, and territories) for use by StateQuiz.
 
-**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx / CitySatelliteQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `finalScore`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score)` to show ResultsScreen.
+**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx / CitySatelliteQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `result`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score, review)` to show ResultsScreen.
+
+**End-of-game review.** Every `Game` accumulates one entry per answered round in a
+`reviewRef` (pushed from `handleGuess`, so a Shuffle / New Image that replaces the target
+without answering is correctly not recorded), and hands the array up through
+`onFinish(score, review)`. Each entry is
+`{ round, correct, guess, answer, wiki, lat, lng, image? }` — `image` only in the satellite
+modes, where it's the same file the round just displayed and is therefore already cached.
+`ResultsScreen` renders all 10 rounds with misses sorted first (stable sort, so each group
+stays in round order), and gives every entry a Wikipedia and a satellite-map link built by
+`src/utils/reviewLinks.js`. Both links are generated from data the quizzes already carry,
+so there is no hand-maintained URL table: Wikipedia goes through `Special:Search?go=Go`
+(jumps to the article on a title match, falls back to a result list instead of a 404), and
+the map uses Google's documented Maps URLs API on the satellite basemap at the round's
+exact coordinates. `TITLE_OVERRIDES` in that file holds the two entries whose data-file
+name differs from Wikipedia's title; the rest were verified against the MediaWiki API.
+Note the results screen is the one screen in the app allowed to scroll.
 
 **State Quiz point generation** (`utils/randomPoint.js`): picks the largest polygon of a state by bounding-box area, shrinks bounds by 10%, and rejection-samples up to 1000 times using point-in-polygon to guarantee the dot falls inside the state.
 
