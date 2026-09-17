@@ -1,21 +1,23 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { getAirportSuggestions } from "../data/airports";
 import { isTouchDevice } from "../utils/isTouch";
 
 // Floating tooltip bubble that hovers ABOVE the Hint button. Absolutely
 // positioned and given a high z-index so it overlaps page content instead of
 // pushing anything down or causing scroll. Fades/rises in whenever the hint
-// changes (keyed by animKey, so passing JSX content doesn't re-trigger the fade
-// on every render). Styling lives in App.css under `.hint-bubble`, which also
+// changes (the parent keys it on the hint level, so passing JSX content doesn't
+// re-trigger the fade on every render). Styling lives in App.css under `.hint-bubble`, which also
 // re-anchors the bubble on phone widths where the Hint button is too narrow and
 // too far left for a centered bubble to stay on screen.
-function HintBubble({ animKey, content }) {
+function HintBubble({ content }) {
   const [shown, setShown] = useState(false);
+  // Mount-only: the parent keys this component on the hint level, so a new hint
+  // remounts it and the fade starts from `shown: false` again without having to
+  // reset the state from inside an effect.
   useEffect(() => {
-    setShown(false);
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
-  }, [animKey]);
+  }, []);
 
   return (
     <div className={`hint-bubble${shown ? " is-shown" : ""}`} role="status">
@@ -26,12 +28,18 @@ function HintBubble({ animKey, content }) {
   );
 }
 
+// The field is a combobox: the dropdown already had role="listbox" / "option",
+// but without aria-expanded / aria-controls / aria-activedescendant on the input
+// a screen reader was never told the suggestions existed, and arrow-key movement
+// through them was silent.
 export default function AirportGuessInput({
   onSubmit,
   disabled,
   onHint,
   onHintClose,
-  hintDisabled,
+  // True once the last hint is out. The button stays clickable on purpose:
+  // at max level a click still reopens the bubble you dismissed.
+  hintMaxed,
   hintLevel,
   hintOpen,
   hintText,
@@ -42,6 +50,7 @@ export default function AirportGuessInput({
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
+  const listId = useId();
   const inputRef = useRef();
   const wrapperRef = useRef();
   const hintWrapRef = useRef();
@@ -124,10 +133,12 @@ export default function AirportGuessInput({
   return (
     <form className="guess-form guess-form-hint" onSubmit={handleSubmit}>
       <div className="hint-wrap" ref={hintWrapRef}>
-        {hintOpen && hintText && <HintBubble animKey={hintLevel} content={hintText} />}
+        {hintOpen && hintText && (
+          <HintBubble key={hintLevel} content={hintText} />
+        )}
         <button
           type="button"
-          className={`btn hint-btn${hintDisabled ? " maxed" : ""}`}
+          className={`btn hint-btn${hintMaxed ? " maxed" : ""}`}
           onClick={onHint}
         >
           {hintLevel > 0 ? `Hint ${hintLevel}/${hintMax}` : "Hint"}
@@ -141,16 +152,25 @@ export default function AirportGuessInput({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => value.trim() && setOpen(true)}
+          role="combobox"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            highlighted >= 0 ? `${listId}-opt-${highlighted}` : undefined
+          }
+          aria-label={placeholder.replace(/\.\.\.$/, "")}
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
           autoFocus={!isTouchDevice()}
         />
         {open && suggestions.length > 0 && (
-          <ul className="autocomplete-dropdown" role="listbox">
+          <ul className="autocomplete-dropdown" role="listbox" id={listId}>
             {suggestions.map((s, i) => (
               <li
                 key={s.code}
+                id={`${listId}-opt-${i}`}
                 className={i === highlighted ? "highlighted" : ""}
                 onMouseDown={(e) => {
                   e.preventDefault();

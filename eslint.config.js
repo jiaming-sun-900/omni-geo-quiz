@@ -6,8 +6,15 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   globalIgnores(['dist']),
+  // Node scripts (the satellite fetcher) use process/Buffer, which aren't in the
+  // browser globals the app files get.
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['scripts/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['src/**/*.{js,jsx}', '*.config.js'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,

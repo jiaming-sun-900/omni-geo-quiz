@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import USMap from "./USMap";
 import GuessInput from "./GuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
+import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 import { cities } from "../data/cities";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
 
@@ -32,7 +33,9 @@ function Game({
   const usedIndices = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
-  const [current, setCurrent] = useState(() => pickCity(usedIndices.current));
+  // Seeded with an empty set rather than usedIndices.current: nothing is used
+  // yet on mount, and reading a ref during render is a React rules violation.
+  const [current, setCurrent] = useState(() => pickCity(new Set()));
   const [feedback, setFeedback] = useState(null);
   // Bumped on each Shuffle; used as the guess input's key so remounting clears
   // the field (the new target may repeat, so identity alone isn't reliable).
@@ -85,26 +88,8 @@ function Game({
     setShuffleId((n) => n + 1);
   };
 
-  // While the bubble is up, the next Enter press or click anywhere advances the
-  // round (or finishes). Listeners attach after this render, so the very event
-  // that submitted the answer doesn't immediately dismiss the bubble. Reuses
-  // handleNext, so the game logic is unchanged.
-  useEffect(() => {
-    if (!feedback) return;
-    const onKey = (e) => {
-      if (e.key === "Enter" && !e.repeat) {
-        e.preventDefault();
-        handleNext();
-      }
-    };
-    const onClick = () => handleNext();
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("click", onClick);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("click", onClick);
-    };
-  }, [feedback]);
+  // Enter or a click anywhere advances the round while the bubble is up.
+  useAdvanceOnDismiss(!!feedback, handleNext);
 
   return (
     <div className="quiz-container state-quiz">
@@ -117,7 +102,14 @@ function Game({
       </div>
 
       <div className="sq-bottom-left">
-        <button className="sq-box sq-home sq-emoji" onClick={onHome}>🏠</button>
+        <button
+          className="sq-box sq-home sq-emoji"
+          onClick={onHome}
+          aria-label="Back to home screen"
+          title="Home"
+        >
+          <span aria-hidden="true">🏠</span>
+        </button>
       </div>
 
       <USMap

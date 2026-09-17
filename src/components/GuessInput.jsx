@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { cityAbbreviations, getCitySuggestions } from "../data/cities";
 import { isTouchDevice } from "../utils/isTouch";
 
+// The field is a combobox: the dropdown already had role="listbox" / "option",
+// but without aria-expanded / aria-controls / aria-activedescendant on the input
+// a screen reader was never told the suggestions existed, and arrow-key movement
+// through them was silent.
 export default function GuessInput({ onSubmit, disabled }) {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
+  const listId = useId();
   const inputRef = useRef();
   const wrapperRef = useRef();
 
@@ -80,16 +85,25 @@ export default function GuessInput({ onSubmit, disabled }) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => value.trim() && setOpen(true)}
+          role="combobox"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            highlighted >= 0 ? `${listId}-opt-${highlighted}` : undefined
+          }
+          aria-label="City name"
           placeholder="Type your answer..."
           disabled={disabled}
           autoComplete="off"
           autoFocus={!isTouchDevice()}
         />
         {open && suggestions.length > 0 && (
-          <ul className="autocomplete-dropdown" role="listbox">
+          <ul className="autocomplete-dropdown" role="listbox" id={listId}>
             {suggestions.map((s, i) => (
               <li
                 key={s.label}
+                id={`${listId}-opt-${i}`}
                 className={i === highlighted ? "highlighted" : ""}
                 onMouseDown={(e) => {
                   e.preventDefault();

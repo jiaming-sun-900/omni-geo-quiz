@@ -1,21 +1,9 @@
 import { useRef, useEffect, useState } from "react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { select } from "d3-selection";
-import * as topojson from "topojson-client";
-import usAtlas from "us-atlas/states-10m.json";
+import { nation, states } from "../data/usGeo.js";
 import rivers from "../data/rivers.js";
 import mountains from "../data/mountains.js";
-
-// Exclude only territories (PR, GU, VI, AS, MP). Alaska (02) and Hawaii (15)
-// stay in the pool; geoAlbersUsa places their geometry in the bottom-left insets.
-const EXCLUDED_IDS = ["60", "66", "69", "72", "78"];
-
-const nation = topojson.feature(usAtlas, usAtlas.objects.nation);
-const states = topojson.feature(usAtlas, usAtlas.objects.states).features.filter(
-  (f) => !EXCLUDED_IDS.includes(f.id)
-);
-
-export { states };
 
 const ASPECT = 0.62; // height / width for AlbersUsa continental fit
 const MAX_WIDTH = 1400;
@@ -144,6 +132,17 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
 
     // Red dot — pop/ripple entrance only when a genuinely new dot appears
     // (compared by value, so toggling overlays doesn't replay the animation).
+    //
+    // The radius scales with the rendered width instead of being a fixed 6px.
+    // At a fixed size the dot covers a growing slice of the country as the map
+    // shrinks: on a 390px-wide phone map a 12px-wide dot is wider than Rhode
+    // Island (5.4 x 7.7px projected), so it hid the very thing it was pointing
+    // at. Tied to the width, it covers the same geographic area at every size.
+    //
+    // The divisor is set so that the 6px ceiling is already reached at the
+    // widths a desktop map actually gets (~960px and up), leaving the desktop
+    // look untouched; only the compact layouts shrink the dot.
+    const dotRadius = Math.max(2.5, Math.min(w / 160, 6));
     if (dotPosition) {
       const projected = projection(dotPosition);
       if (projected) {
@@ -157,7 +156,7 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
             .attr("class", "map-dot-ring")
             .attr("cx", projected[0])
             .attr("cy", projected[1])
-            .attr("r", 6);
+            .attr("r", dotRadius);
         }
 
         svg
@@ -165,10 +164,10 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
           .attr("class", isNewDot ? "map-dot" : null)
           .attr("cx", projected[0])
           .attr("cy", projected[1])
-          .attr("r", 6)
+          .attr("r", dotRadius)
           .attr("fill", "#e53e3e")
           .attr("stroke", "#fff")
-          .attr("stroke-width", 2);
+          .attr("stroke-width", Math.max(1, dotRadius / 3));
       }
     }
 

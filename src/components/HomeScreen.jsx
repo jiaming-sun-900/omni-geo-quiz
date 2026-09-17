@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Globe from "./Globe";
 
 const ENTRIES = [
@@ -13,6 +13,7 @@ const ENTRIES = [
 
 export default function HomeScreen({ onSelectMode }) {
   const [modalMode, setModalMode] = useState(null);
+  const firstOptionRef = useRef(null);
 
   const handleSelect = (mode) => {
     if (mode === "airport" || mode === "city") {
@@ -22,13 +23,16 @@ export default function HomeScreen({ onSelectMode }) {
     }
   };
 
-  // Close the mode-selection modal (Airport / City) on Escape.
+  // Close the mode-selection modal (Airport / City) on Escape, and move focus
+  // into it when it opens so the keyboard lands on the first choice instead of
+  // staying on the menu button behind the backdrop.
   useEffect(() => {
     if (!modalMode) return;
     const onKey = (e) => {
       if (e.key === "Escape") setModalMode(null);
     };
     window.addEventListener("keydown", onKey);
+    firstOptionRef.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [modalMode]);
 
@@ -54,14 +58,17 @@ export default function HomeScreen({ onSelectMode }) {
           {ENTRIES.map((e) => (
             <button
               key={e.num}
-              className={`menu-row${e.soon ? " disabled" : ""}`}
-              onClick={() => !e.soon && handleSelect(e.mode)}
-              disabled={e.soon}
+              className="menu-row"
+              onClick={() => handleSelect(e.mode)}
             >
               <span className="menu-num">{e.num}</span>
-              <span className="menu-icon">{e.icon}</span>
+              <span className="menu-icon" aria-hidden="true">
+                {e.icon}
+              </span>
               <span className="menu-name">{e.name}</span>
-              <span className="menu-tag">{e.soon ? "[SOON]" : "[ENTER]"}</span>
+              <span className="menu-tag" aria-hidden="true">
+                [ENTER]
+              </span>
             </button>
           ))}
         </div>
@@ -70,13 +77,22 @@ export default function HomeScreen({ onSelectMode }) {
 
       {modalMode && (
         <div className="modal-backdrop" onClick={() => setModalMode(null)}>
-          <div className="modal-options" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-options"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Choose a ${modalMode === "city" ? "City" : "Airport"} Quiz mode`}
+          >
             <div className="mode-option">
               <button
+                ref={firstOptionRef}
                 className="mode-square"
                 onClick={() => onSelectMode(modalMode)}
               >
-                <span className="mode-icon">🗺️</span>
+                <span className="mode-icon" aria-hidden="true">
+                  🗺️
+                </span>
                 <span>Blank Map</span>
               </button>
             </div>
@@ -85,7 +101,9 @@ export default function HomeScreen({ onSelectMode }) {
                 className="mode-square"
                 onClick={() => onSelectMode(`${modalMode}-satellite`)}
               >
-                <span className="mode-icon">🛰️</span>
+                <span className="mode-icon" aria-hidden="true">
+                  🛰️
+                </span>
                 <span>Satellite</span>
               </button>
             </div>
