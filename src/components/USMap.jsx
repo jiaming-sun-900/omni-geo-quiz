@@ -20,18 +20,27 @@ export { states };
 const ASPECT = 0.62; // height / width for AlbersUsa continental fit
 const MAX_WIDTH = 1400;
 
-function computeDims() {
+// The map is sized to the box its wrapper actually got from the flex layout,
+// not to a guessed fraction of the viewport. That makes it shrink correctly
+// once the surrounding chrome (top bar, toggles, controls) takes real space on
+// small screens, instead of sliding underneath it. `box` is the measured
+// wrapper; before the first measurement we fall back to the viewport.
+//
+// The desktop height cap that used to live here is now `.us-map-wrap`'s
+// `max-height` in App.css, so it is already baked into the measured box — one
+// place to look, and the compact layout can lift it by overriding the CSS.
+function computeDims(box) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  // Reserve vertical space for header (~12vh) and controls (~22vh) → map ~66vh
-  const maxByWidth = vw * 0.94;
-  const maxByHeight = (vh * 0.66) / ASPECT;
-  const w = Math.min(maxByWidth, maxByHeight, MAX_WIDTH);
-  return { width: w, height: w * ASPECT };
+  const availW = box?.width || vw * 0.94;
+  const availH = box?.height || vh * 0.66;
+  const w = Math.min(availW, availH / ASPECT, MAX_WIDTH);
+  return { width: Math.max(w, 0), height: Math.max(w * ASPECT, 0) };
 }
 
 export default function USMap({ dotPosition, revealedStateId, showRivers = false, showMountains = false, showBorders = false }) {
   const svgRef = useRef();
+  const wrapRef = useRef();
   const prevDotRef = useRef(null);
   const [dimensions, setDimensions] = useState(() =>
     typeof window === "undefined"
@@ -39,11 +48,28 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
       : computeDims()
   );
 
+  // Re-measure whenever the wrapper's box changes. A ResizeObserver catches
+  // viewport resizes, device rotation, mobile URL-bar collapse and layout
+  // shifts from sibling chrome alike. The wrapper is `flex: 1; overflow:
+  // hidden`, so its size is decided by the layout and never by the SVG we put
+  // inside it — no measure/resize feedback loop.
   useEffect(() => {
-    const handleResize = () => setDimensions(computeDims());
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      setDimensions(computeDims({ width: rect.width, height: rect.height }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+    };
   }, []);
 
   useEffect(() => {
@@ -150,11 +176,14 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
   }, [dotPosition, revealedStateId, dimensions, showRivers, showMountains, showBorders]);
 
   return (
-    <svg
-      ref={svgRef}
-      width={dimensions.width}
-      height={dimensions.height}
-      style={{ display: "block", margin: "0 auto" }}
-    />
+    <div className="us-map-wrap" ref={wrapRef}>
+      <svg
+        ref={svgRef}
+        width={dimensions.width}
+        height={dimensions.height}
+        role="img"
+        aria-label="Map of the United States"
+      />
+    </div>
   );
 }

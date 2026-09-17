@@ -6,10 +6,25 @@
   align-items: center;
   width: 100%;
   height: 100%;
-  padding: 2rem;
+  padding: 2rem calc(2rem + var(--safe-right)) calc(2rem + var(--safe-bottom))
+    calc(2rem + var(--safe-left));
+  padding-top: calc(2rem + var(--safe-top));
   box-sizing: border-box;
-  overflow: hidden;
+  /* Scroll, never clip: on a short window the menu panel is taller than the
+     viewport, and `overflow: hidden` used to cut the last entries off with no
+     way to reach them. */
+  align-items: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #FAF7F4;
+}
+
+/* Vertical centering via auto margins rather than `align-items: center`: auto
+   margins collapse to zero once the content is taller than the container, so
+   the top stays scrollable instead of overflowing out of reach. */
+.home-left,
+.home-right {
+  margin-block: auto;
 }
 
 .home-left {
@@ -43,7 +58,10 @@
 }
 
 .globe-disc {
-  --disc: 552px;
+  /* Capped at the original 552px, but never wider than the column it sits in
+     nor taller than half the viewport, so it scales down instead of bleeding
+     off the edges on smaller screens. */
+  --disc: min(552px, 42vw, 64vh);
   width: var(--disc);
   height: var(--disc);
   flex-shrink: 0;
@@ -281,8 +299,8 @@
 /* "Meet the Dev" link — fixed top-right corner of the Home screen */
 .dev-link {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
+  top: calc(1rem + var(--safe-top));
+  right: calc(1rem + var(--safe-right));
   background: #fff;
   border: 2px solid #1a1a1a;
   border-radius: 12px;
@@ -377,6 +395,9 @@
 
 .menu-name {
   font-weight: 600;
+  /* Grid items default to min-content width; this lets the name track actually
+     shrink (and the label wrap) instead of forcing the row wider than the panel. */
+  min-width: 0;
 }
 
 .menu-tag {
@@ -403,12 +424,17 @@
      time (see vite.config.js). Hand-writing both makes the minifier drop one. */
   backdrop-filter: blur(12px);
   background: rgba(250, 247, 244, 0.4);
+  padding: calc(1rem + var(--safe-top)) calc(1rem + var(--safe-right))
+    calc(1rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
 }
 
 .modal-options {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 3rem;
+  max-width: 100%;
 }
 
 .mode-option {
@@ -419,8 +445,8 @@
 }
 
 .mode-square {
-  width: 17rem;
-  height: 17rem;
+  width: min(17rem, 40vw);
+  height: min(17rem, 40vw);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -461,7 +487,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding: 1rem 1.5rem;
+  padding: 1rem calc(1.5rem + var(--safe-right)) calc(1rem + var(--safe-bottom))
+    calc(1.5rem + var(--safe-left));
   box-sizing: border-box;
   min-height: 0;
 }
@@ -514,11 +541,96 @@
   color: #1a1a2e;
 }
 
-/* SVG map auto-centers in remaining vertical space */
-.quiz-container > svg {
-  margin: auto;
+/* Map stage — claims whatever vertical room is left between the top chrome and
+   the controls, and centers the SVG in it. USMap measures THIS element (not the
+   viewport) to size the projection, so the map automatically shrinks when the
+   surrounding chrome takes real space instead of sliding underneath it.
+   `min-height: 0` lets it shrink inside the column flexbox; `overflow: hidden`
+   guarantees the box is driven by the layout and never by the SVG inside it, so
+   measuring it can't feed back into its own size.
+   `--map-inset` keeps the map clear of the floating corner boxes on the desktop
+   layout; the compact layout sets it to 0 because nothing floats there.
+   `max-height` is the original desktop size cap (66vh), so wide screens render
+   the map at exactly the size they always have; the compact layout lifts it so
+   the map can use every pixel the top bar and toggle row leave behind. */
+.us-map-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 66vh;
+  width: calc(100% - 2 * var(--map-inset, 0rem));
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.us-map-wrap > svg {
   display: block;
-  flex-shrink: 0;
+}
+
+/* Satellite stage — same idea as .us-map-wrap, for the square image modes. The
+   controls slot below is content-sized, so the stage claims all the remaining
+   height, and `flex-basis: 0` is what makes that height *definite* — which is
+   what the frame below needs in order to measure it. */
+.sat-stage {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Makes the stage a size container so the frame below can read BOTH of its
+     dimensions (100cqh / 100cqw) and fit a square inside them. Safe here: the
+     stage's size already comes entirely from the layout (flex-resolved height,
+     full width), never from its contents. */
+  container-type: size;
+}
+
+/* Square frame. This rule is the fallback for engines without size container
+   queries (pre-2022): the original fixed square, which is right on roomy
+   screens and overflows only where it always did. */
+.sat-frame {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: min(68vh, 88vw);
+  max-width: 100%;
+}
+
+/* The real sizing. Both of the stage's dimensions have to constrain a square: a
+   width-driven one overflows a short stage, a height-driven one overflows a
+   narrow stage — and `aspect-ratio` does NOT transfer a max-* cap back to the
+   axis that was set explicitly, so no single declaration can do it (a plain
+   `height: 100%` + `max-width` letterboxes the frame, and `object-fit: cover`
+   then crops the image). Reading the stage's own height and width via container
+   units expresses both limits at once. The `68vh` term is the original desktop
+   size, so roomy screens render exactly as before. */
+@supports (height: 1cqh) {
+  .sat-frame {
+    width: auto;
+    height: min(100cqh, 100cqw, 68vh, 88vw);
+  }
+}
+
+.sat-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Compass scales with the image so it never swallows a small frame. */
+.sat-compass {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: clamp(30px, 11%, 56px);
+  height: clamp(30px, 11%, 56px);
+  pointer-events: none;
+}
+
+.sat-controls-slot {
+  flex: 0 0 auto;
 }
 
 /* Red dot entrance — pop/bounce on the dot, expanding fading ripple ring.
@@ -580,7 +692,68 @@
   gap: 0.75rem;
   justify-content: center;
   max-width: 460px;
+  width: 100%;
   margin: 0 auto;
+}
+
+/* The airport/satellite variant carries an extra Hint button, so it gets more
+   room than the plain two-control form. */
+.guess-form-hint {
+  max-width: 600px;
+}
+
+/* Anchor for the floating hint bubble. */
+.hint-wrap {
+  position: relative;
+  display: flex;
+}
+
+/* Hint bubble — floats above the Hint button, out of flow so revealing a hint
+   never reflows the page or causes scroll. */
+.hint-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: max-content;
+  max-width: min(70vw, 22rem);
+  padding: 0.75rem 1rem;
+  background: #fff;
+  color: #1a1a2e;
+  border: 2px solid #111;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px #111;
+  font-size: clamp(0.95rem, 3.2vw, 1.08rem);
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hint-bubble.is-shown {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+.hint-bubble ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.4rem;
+}
+
+.hint-bubble-tail {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 9px solid #111;
 }
 
 .guess-form input {
@@ -611,6 +784,8 @@
 .autocomplete-dropdown {
   position: absolute;
   bottom: calc(100% + 4px);
+  /* Scrolls rather than running past the top of a short viewport. */
+  max-height: min(320px, 45vh);
   left: 0;
   right: 0;
   background: #fff;
@@ -619,11 +794,11 @@
   list-style: none;
   margin: 0;
   padding: 4px 0;
-  max-height: 320px;
   overflow-y: auto;
   z-index: 10;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
   text-align: left;
+  -webkit-overflow-scrolling: touch;
 }
 
 .autocomplete-dropdown li {
@@ -883,16 +1058,23 @@ button.sq-box:hover {
   line-height: 1;
 }
 
-/* Small top breathing room so the map isn't flush against the viewport edge */
+/* Small top breathing room so the map isn't flush against the viewport edge.
+   --map-inset / --controls-inset reserve horizontal room for the floating
+   corner boxes (right column) and the toggle panel, so the centered map and the
+   centered prompt/form can never slide underneath them on a narrow desktop
+   window. On wide screens both insets are smaller than the slack that already
+   existed, so nothing about the desktop layout changes. */
 .state-quiz {
-  padding-top: 4rem;
+  --map-inset: 9rem;
+  --controls-inset: 15rem;
+  padding-top: calc(4rem + var(--safe-top));
   position: relative;
 }
 
 .sq-bottom-left {
   position: absolute;
-  bottom: 1rem;
-  left: 1.5rem;
+  bottom: calc(1rem + var(--safe-bottom));
+  left: calc(1.5rem + var(--safe-left));
   display: flex;
   flex-direction: row;
   gap: 0.5rem;
@@ -901,8 +1083,8 @@ button.sq-box:hover {
 /* Toggle switches — bottom-right corner */
 .sq-toggles {
   position: absolute;
-  bottom: 1rem;
-  right: 1.5rem;
+  bottom: calc(1rem + var(--safe-bottom));
+  right: calc(1.5rem + var(--safe-right));
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -1015,6 +1197,7 @@ button.sq-box:hover {
 /* Push the prompt/input group slightly down for breathing room from the map */
 .state-quiz .quiz-controls {
   margin-top: 3rem;
+  padding-inline: var(--controls-inset);
 }
 
 .state-quiz .prompt {
@@ -1022,13 +1205,36 @@ button.sq-box:hover {
   font-size: 1.85rem;
 }
 
-/* Responsive */
+/* ==========================================================================
+   Responsive
+   --------------------------------------------------------------------------
+   Four tiers, each layered on top of the desktop rules above:
+
+     1. <= 900px            home screen stacks into one column
+     2. <= 1024px OR short  quiz chrome leaves the corners and joins the flow
+     3. <= 600px            phone sizing (compact form, smaller menu rows)
+     4. <= 400px / short    last-resort tightening for small & landscape phones
+
+   Everything wider and taller than tier 2 renders exactly as it always has.
+   ========================================================================== */
+
+/* ---------- Tier 1: home screen stacks ---------- */
 @media (max-width: 900px) {
   .home-screen {
     flex-direction: column;
-    justify-content: center;
-    gap: 1.75rem;
-    overflow-y: auto;
+    justify-content: flex-start;
+    gap: 1.5rem;
+    height: auto;
+  }
+
+  /* Column layout: one auto margin at each end centers the pair as a group and
+     collapses to zero when they no longer fit, keeping the top reachable. */
+  .home-left {
+    margin-block: auto 0;
+  }
+
+  .home-right {
+    margin-block: 0 auto;
   }
 
   .home-left,
@@ -1038,30 +1244,761 @@ button.sq-box:hover {
   }
 
   .home-right {
-    padding: 0 1rem;
+    padding: 0;
   }
 
   .home-title {
     text-align: center;
+    margin-bottom: 1.25rem;
   }
 
   .globe-disc {
-    --disc: 425px;
+    --disc: min(340px, 74vw, 30vh);
+  }
+
+  .globe-wrap {
+    gap: 0.8rem;
+  }
+
+  .globe-reset {
+    margin-top: 0.5rem;
+  }
+
+  .home-title {
+    font-size: 2.8rem;
+  }
+
+  .menu-panel {
+    max-width: 32rem;
+    padding: 1.2rem 1.1rem;
+    gap: 0.8rem;
+  }
+
+  .menu-row {
+    padding: 0.65rem 0.9rem;
   }
 }
 
-@media (max-width: 600px) {
+/* ---------- Narrow two-column home (tablet landscape, small laptop) ----------
+   Above 900px the home screen keeps its two columns, but between there and
+   ~1220px the menu column is too narrow for the full-size type: every entry
+   name wrapped onto three lines and the panel ran off the bottom of the screen.
+   Trimming the type scale and the icon/tag columns puts each name back on one
+   line without changing the layout. */
+@media (min-width: 901px) and (max-width: 1220px) {
+  .home-right {
+    padding: 0 1.25rem;
+  }
+
   .home-title {
+    font-size: 2.6rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .globe-disc {
+    --disc: min(552px, 40vw, 52vh);
+  }
+
+  .menu-panel {
+    padding: 1.6rem 1.2rem;
+    gap: 1rem;
+  }
+
+  .menu-row {
+    grid-template-columns: 2rem auto 1fr auto;
+    gap: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    font-size: 1.05rem;
+  }
+
+  .menu-num {
+    font-size: 1.05rem;
+  }
+
+  .menu-icon {
+    font-size: 1.15rem;
+  }
+
+  .menu-tag {
+    font-size: 0.85rem;
+  }
+}
+
+/* The radial speed menu fans out to the RIGHT of its button, which sits close
+   to the right edge once the globe column is full-width. Mirror it to the left
+   so the options stay on screen. */
+@media (max-width: 820px) {
+  .globe-fan {
+    left: auto;
+    right: 100%;
+    width: 140px;
+  }
+
+  .globe-fan-btn {
+    left: auto;
+    right: 0;
+    transform: translate(50%, -50%) scale(0);
+  }
+
+  .globe-fan.open .globe-fan-btn {
+    transform: translate(calc(50% - var(--x)), calc(-50% + var(--y))) scale(1);
+  }
+}
+
+/* ---------- Tier 2: compact quiz chrome ----------
+   Below this size the 116px corner squares and the floating toggle panel take
+   more of the screen than the content does, and they overlap the map, the
+   prompt and each other. Here they collapse into a single compact top bar plus
+   an in-flow toggle row: nothing is layered over anything else, and the
+   map/image simply gets whatever room is left. Triggered by width OR by a short
+   viewport, so landscape phones and short desktop windows get it too. */
+@media (max-width: 1024px), (max-height: 620px) {
+  .state-quiz {
+    /* Nothing floats over the content any more, so no inset is needed. */
+    --map-inset: 0rem;
+    --controls-inset: 0rem;
+    padding-top: calc(0.75rem + var(--safe-top));
+  }
+
+  /* The chrome is in the flow now, so whatever height is left really is
+     available — drop the desktop 66vh cap and let the map fill it. */
+  .us-map-wrap {
+    max-height: none;
+  }
+
+  .quiz-container {
+    gap: 0.6rem;
+    padding-left: calc(0.85rem + var(--safe-left));
+    padding-right: calc(0.85rem + var(--safe-right));
+    padding-bottom: calc(0.85rem + var(--safe-bottom));
+  }
+
+  /* Top bar: the header stays in flow and holds Round / Score / Shuffle on the
+     right. The Home button is pinned to the container's top-left, which is the
+     empty half of that same row, so the two read as one bar. */
+  .state-quiz-header {
+    justify-content: flex-end;
+    min-height: 2.9rem;
+  }
+
+  .sq-right {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .sq-bottom-left {
+    top: calc(0.75rem + var(--safe-top));
+    bottom: auto;
+    left: calc(0.85rem + var(--safe-left));
+  }
+
+  .sq-box {
+    width: auto;
+    height: 2.9rem;
+    padding: 0 0.75rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    box-shadow: 2px 2px 0px #111;
+  }
+
+  button.sq-box:hover {
+    box-shadow: 1px 1px 0px #111;
+  }
+
+  .sq-home {
+    width: 2.9rem;
+    padding: 0;
+  }
+
+  .sq-emoji {
+    font-size: 1.35rem;
+  }
+
+  /* Toggles: a compact centered row under the map. */
+  .sq-toggles {
+    position: static;
+    align-self: center;
+    max-width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem 0.9rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 10px;
+    box-shadow: 2px 2px 0px #111;
+  }
+
+  .sq-toggle {
+    gap: 0.45rem;
+  }
+
+  .sq-toggle-label {
+    font-size: 0.85rem;
+  }
+
+  .push-toggle {
+    min-width: 46px;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  .state-quiz .quiz-controls {
+    margin-top: 0.75rem;
+  }
+
+  .state-quiz .prompt {
+    font-size: 1.3rem;
+    margin-bottom: 0.6rem;
+  }
+
+  /* Drop the desktop viewport cap: the stage's own box is the only limit here,
+     so the image uses the full content width. */
+  .sat-frame {
+    width: 100%;
+  }
+
+  @supports (height: 1cqh) {
+    .sat-frame {
+      width: auto;
+      height: min(100cqh, 100cqw);
+    }
+  }
+}
+
+/* ---------- Tier 3: phones ---------- */
+@media (max-width: 600px) {
+  .home-screen {
+    /* Content is taller than the viewport here, so center-alignment would put
+       the top of the page out of scroll reach. */
+    justify-content: flex-start;
+    padding-left: calc(1rem + var(--safe-left));
+    padding-right: calc(1rem + var(--safe-right));
+  }
+
+  .home-title {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+  }
+
+  .globe-disc {
+    --disc: min(300px, 74vw, 30vh);
+  }
+
+  .globe-controls {
+    gap: 1rem;
+  }
+
+  .globe-btn {
+    width: 2.6rem;
+    height: 2.6rem;
+    font-size: 1.3rem;
+  }
+
+  .globe-speed {
+    left: calc(100% + 0.8rem);
+  }
+
+  .globe-speed-btn {
+    min-width: 3rem;
+    padding: 0 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .menu-panel {
+    padding: 1.1rem 0.9rem;
+    gap: 0.7rem;
+    box-shadow: 4px 4px 0px #111;
+  }
+
+  .menu-row {
+    grid-template-columns: 1.7rem auto 1fr auto;
+    gap: 0.5rem;
+    padding: 0.7rem 0.75rem;
+    font-size: 1rem;
+    box-shadow: 3px 3px 0px #111;
+  }
+
+  .menu-num {
+    font-size: 1rem;
+  }
+
+  .menu-icon {
+    font-size: 1.05rem;
+  }
+
+  .menu-tag {
+    font-size: 0.8rem;
+  }
+
+  .dev-link {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  /* Sub-mode modal: two smaller squares that still fit side by side. */
+  .modal-options {
+    gap: 1rem;
+  }
+
+  .mode-square {
+    width: min(42vw, 13rem);
+    height: min(42vw, 13rem);
+    gap: 0.7rem;
+    font-size: 1.05rem;
+  }
+
+  .mode-square .mode-icon {
+    font-size: 2.8rem;
+  }
+
+  /* Guess form: the text field gets its own full-width row, with Hint and
+     Submit sharing the row below it. Stacking all three would push the field
+     off a phone screen. */
+  .guess-form {
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .guess-form .autocomplete-wrapper {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .guess-form .hint-wrap {
+    order: 2;
+    flex: 1 1 0;
+  }
+
+  .guess-form .hint-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 0.65rem 0.8rem;
+    font-size: 1rem;
+  }
+
+  /* The Hint button is only half the form's width here and sits at its left
+     edge, so a bubble centered on the button would hang off the screen. Anchor
+     it to the button's left edge and point the tail back at the button. */
+  .hint-bubble {
+    left: 0;
+    /* vw, not %: a percentage would resolve against the narrow .hint-wrap. */
+    max-width: min(88vw, 22rem);
+    transform: translateY(-4px);
+  }
+
+  .hint-bubble.is-shown {
+    transform: translateY(-10px);
+  }
+
+  .hint-bubble-tail {
+    left: 2rem;
+    transform: none;
+  }
+
+  /* Matched on the attribute because the three guess inputs style Submit
+     differently (.btn.primary in the city/airport forms, .push-toggle in the
+     state form) but all of them need the same placement here. */
+  .guess-form > [type="submit"] {
+    order: 3;
+    flex: 1 1 0;
+    padding: 0.65rem 0.8rem;
+    font-size: 1rem;
+  }
+
+  .results-screen h2 {
+    font-size: 1.8rem;
+  }
+
+  .score-big {
+    font-size: 2.8rem;
+  }
+
+  .results-message {
+    font-size: 1.15rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .results-buttons {
+    gap: 1rem;
+  }
+
+  .results-btn {
+    width: 130px;
+    height: 50px;
+  }
+}
+
+/* ---------- Tier 4: small & landscape phones ---------- */
+@media (max-width: 400px) {
+  .sq-box {
+    height: 2.6rem;
+    padding: 0 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .sq-home {
+    width: 2.6rem;
+  }
+
+  .sq-emoji {
+    font-size: 1.2rem;
+  }
+
+  .sq-right {
+    gap: 0.35rem;
+  }
+
+  .state-quiz .prompt {
+    font-size: 1.1rem;
+  }
+
+  .sq-toggles {
+    gap: 0.35rem 0.6rem;
+  }
+}
+
+/* Short phones (iPhone SE and friends): trim the home screen's vertical rhythm
+   so the globe, title and all five menu entries fit without scrolling. */
+@media (max-width: 600px) and (max-height: 800px) {
+  .home-screen {
+    gap: 0.9rem;
+  }
+
+  .globe-wrap {
+    gap: 0.5rem;
+  }
+
+  .globe-reset {
+    margin-top: 0.25rem;
+    padding: 0.3rem 0.8rem;
+  }
+
+  .home-title {
+    font-size: 1.9rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .menu-panel {
+    padding: 0.8rem;
+    gap: 0.5rem;
+  }
+
+  .menu-row {
+    padding: 0.55rem 0.7rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* The shortest phones still in use (iPhone SE / 8, 375x667): one more notch
+   tighter so the globe, title and all five entries fit without scrolling. */
+@media (max-width: 600px) and (max-height: 700px) {
+  .home-screen {
+    gap: 0.7rem;
+  }
+
+  .globe-disc {
+    --disc: min(300px, 74vw, 27vh);
+  }
+
+  .home-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .menu-panel {
+    padding: 0.7rem;
+    gap: 0.4rem;
+  }
+
+  .menu-row {
+    padding: 0.45rem 0.7rem;
+  }
+}
+
+/* The [ENTER] tag is the first thing to go when the menu rows run out of room —
+   below this width "World Airport Quiz" wraps onto a second line with it. */
+@media (max-width: 380px) {
+  .menu-tag {
+    display: none;
+  }
+}
+
+/* Landscape phones: width is fine, height is not. Trim every vertical margin so
+   the map/image still has something left to occupy. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .home-screen {
+    flex-direction: row;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  /* Back to two columns, so undo the column tier's one-auto-margin-per-child
+     centering — in a row that would bottom-align one column and top-align the
+     other. */
+  .home-left,
+  .home-right {
+    width: 50%;
+    margin-block: auto;
+  }
+
+  .globe-disc {
+    --disc: min(300px, 40vw, 53vh);
+  }
+
+  .globe-wrap {
+    gap: 0.45rem;
+  }
+
+  .globe-reset {
+    margin-top: 0.25rem;
+  }
+
+  .home-title {
+    font-size: 1.8rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .menu-panel {
+    padding: 0.6rem;
+    gap: 0.35rem;
+  }
+
+  /* The menu column is only half a short-landscape screen wide, so use the
+     phone tier's tighter grid to keep entry names on one line. */
+  .menu-row {
+    grid-template-columns: 1.8rem auto 1fr auto;
+    gap: 0.5rem;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.95rem;
+  }
+
+  .menu-num {
+    font-size: 1rem;
+  }
+
+  .menu-icon {
+    font-size: 1.05rem;
+  }
+
+  .menu-tag {
+    font-size: 0.8rem;
+  }
+
+  .mode-square {
+    width: min(34vh, 11rem);
+    height: min(34vh, 11rem);
+  }
+
+  .mode-square .mode-icon {
     font-size: 2.4rem;
   }
 
-  .guess-form {
-    flex-direction: column;
+  .quiz-container {
+    gap: 0.4rem;
   }
 
-  .quiz-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .state-quiz .quiz-controls {
+    margin-top: 0.4rem;
+  }
+
+  .state-quiz .prompt {
+    font-size: 1.05rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .sq-toggles {
+    padding: 0.3rem 0.6rem;
+  }
+
+  .results-screen {
+    padding: 1rem;
+  }
+
+  .results-screen h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .score-big {
+    font-size: 2.2rem;
+  }
+
+  .results-message {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+}
+
+/* Short windows, two-column home (>900px wide): a short desktop window or a
+   laptop in a split view. The width/height guards make each short-window tier
+   disjoint from the phone and landscape tiers, which already shrink the same
+   properties by more — without them, whichever block came last in the file
+   would win and the layout would grow again. */
+@media (min-width: 901px) and (min-height: 521px) and (max-height: 720px) {
+  .home-title {
+    font-size: 2.2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .globe-disc {
+    --disc: min(552px, 40vw, 46vh);
+  }
+
+  .globe-wrap {
+    gap: 0.6rem;
+  }
+
+  .globe-reset {
+    margin-top: 0.35rem;
+  }
+
+  .globe-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.3rem;
+  }
+
+  .menu-panel {
+    padding: 0.9rem 1rem;
     gap: 0.5rem;
+  }
+
+  .menu-row {
+    padding: 0.5rem 0.85rem;
+    font-size: 1rem;
+  }
+}
+
+/* Short windows, stacked home (601-900px wide): a small tablet in landscape, or
+   a narrow desktop window. The column layout stacks the globe on top of the
+   menu, so a short viewport here is the tightest case of all — everything gets
+   the phone-tier treatment without the phone-tier form changes. */
+@media (min-width: 601px) and (max-width: 900px) and (min-height: 521px) and (max-height: 720px) {
+  .home-screen {
+    gap: 0.8rem;
+  }
+
+  .globe-disc {
+    --disc: min(280px, 60vw, 20vh);
+  }
+
+  .globe-wrap {
+    gap: 0.5rem;
+  }
+
+  .globe-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.3rem;
+  }
+
+  .globe-reset {
+    margin-top: 0.3rem;
+    padding: 0.3rem 0.85rem;
+  }
+
+  .home-title {
+    font-size: 2rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .menu-panel {
+    padding: 0.7rem;
+    gap: 0.4rem;
+  }
+
+  .menu-row {
+    padding: 0.45rem 0.8rem;
+    font-size: 1rem;
+  }
+}
+
+/* Very short viewports: the fixed "Meet the Dev" link sits on top of the title
+   in the right-hand column, so move it over the globe column, which has slack
+   at the top. */
+@media (max-height: 420px) {
+  .dev-link {
+    right: auto;
+    left: calc(0.5rem + var(--safe-left));
+    top: calc(0.4rem + var(--safe-top));
+  }
+}
+
+/* Narrow landscape (small phone on its side): the menu column is too tight for
+   both a name and a tag, so the decorative tag goes. */
+@media (max-width: 700px) and (max-height: 520px) and (orientation: landscape) {
+  .menu-tag {
+    display: none;
+  }
+}
+
+/* Coarse pointers need a finger-sized target. The ON/OFF toggles and the small
+   Reset View button are the only controls that fall under ~34px otherwise. */
+@media (pointer: coarse) {
+  .push-toggle {
+    min-height: 34px;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .globe-reset {
+    min-height: 34px;
+    padding: 0.45rem 0.95rem;
+  }
+}
+
+/* Devices without a hover-capable pointer: the retro press animation is driven
+   by :hover, which "sticks" after a tap on touch screens. Drive it from :active
+   instead so buttons still feel physical without staying pressed. */
+@media (hover: none) {
+  .menu-row:not(.disabled):hover,
+  .mode-square:not(.disabled):hover,
+  button.sq-box:hover,
+  .globe-btn:hover,
+  .globe-reset:hover,
+  .dev-link:hover,
+  .results-btn:hover,
+  .guess-form .btn.primary:not(:disabled):hover,
+  .guess-form .hint-btn:hover {
+    transform: none;
+    box-shadow: 3px 3px 0px #111;
+  }
+
+  .menu-row:not(.disabled):active,
+  .mode-square:not(.disabled):active,
+  button.sq-box:active,
+  .globe-btn:active,
+  .globe-reset:active,
+  .dev-link:active,
+  .results-btn:active,
+  .guess-form .btn.primary:not(:disabled):active,
+  .guess-form .hint-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #111;
+  }
+
+  .autocomplete-dropdown li:hover {
+    background: #fff;
+  }
+}
+
+/* Users who ask for less motion get no dot pop, ripple or fan animation. */
+@media (prefers-reduced-motion: reduce) {
+  .map-dot,
+  .map-dot-ring,
+  .globe-dot.active::after {
+    animation: none;
+  }
+
+  .map-dot-ring {
+    display: none;
+  }
+
+  .globe-fan-btn {
+    transition-duration: 0.01ms;
+    transition-delay: 0ms;
   }
 }

@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { getAirportSuggestions } from "../data/airports";
+import { isTouchDevice } from "../utils/isTouch";
 
 // Floating tooltip bubble that hovers ABOVE the Hint button. Absolutely
 // positioned and given a high z-index so it overlaps page content instead of
 // pushing anything down or causing scroll. Fades/rises in whenever the hint
 // changes (keyed by animKey, so passing JSX content doesn't re-trigger the fade
-// on every render). Inline styles keep the shared stylesheet untouched.
+// on every render). Styling lives in App.css under `.hint-bubble`, which also
+// re-anchors the bubble on phone widths where the Hint button is too narrow and
+// too far left for a centered bubble to stay on screen.
 function HintBubble({ animKey, content }) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
@@ -15,47 +18,10 @@ function HintBubble({ animKey, content }) {
   }, [animKey]);
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "100%",
-        left: "50%",
-        transform: `translateX(-50%) translateY(${shown ? "-10px" : "-4px"})`,
-        width: "max-content",
-        maxWidth: "70vw",
-        padding: "0.75rem 1rem",
-        background: "#fff",
-        color: "#1a1a2e",
-        border: "2px solid #111",
-        borderRadius: "12px",
-        boxShadow: "3px 3px 0px #111",
-        fontSize: "1.08rem",
-        fontWeight: 600,
-        lineHeight: 1.35,
-        textAlign: "left",
-        whiteSpace: "normal",
-        zIndex: 1000,
-        pointerEvents: "none",
-        opacity: shown ? 1 : 0,
-        transition: "opacity 0.25s ease, transform 0.25s ease",
-      }}
-      role="status"
-    >
+    <div className={`hint-bubble${shown ? " is-shown" : ""}`} role="status">
       {content}
       {/* little tail pointing down at the button */}
-      <span
-        style={{
-          position: "absolute",
-          top: "100%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 0,
-          height: 0,
-          borderLeft: "8px solid transparent",
-          borderRight: "8px solid transparent",
-          borderTop: "9px solid #111",
-        }}
-      />
+      <span className="hint-bubble-tail" />
     </div>
   );
 }
@@ -94,12 +60,14 @@ export default function AirportGuessInput({
     return () => document.removeEventListener("click", onDocClick);
   }, [hintOpen, onHintClose]);
 
+  // Clear the field when a new round starts. Refocusing is skipped on touch
+  // devices so the on-screen keyboard doesn't cover the map/image unasked.
   useEffect(() => {
     if (!disabled) {
       setValue("");
       setOpen(false);
       setHighlighted(-1);
-      inputRef.current?.focus();
+      if (!isTouchDevice()) inputRef.current?.focus();
     }
   }, [disabled]);
 
@@ -154,8 +122,8 @@ export default function AirportGuessInput({
   };
 
   return (
-    <form className="guess-form" onSubmit={handleSubmit} style={{ maxWidth: "600px" }}>
-      <div style={{ position: "relative", display: "flex" }} ref={hintWrapRef}>
+    <form className="guess-form guess-form-hint" onSubmit={handleSubmit}>
+      <div className="hint-wrap" ref={hintWrapRef}>
         {hintOpen && hintText && <HintBubble animKey={hintLevel} content={hintText} />}
         <button
           type="button"
@@ -176,7 +144,7 @@ export default function AirportGuessInput({
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
-          autoFocus
+          autoFocus={!isTouchDevice()}
         />
         {open && suggestions.length > 0 && (
           <ul className="autocomplete-dropdown" role="listbox">

@@ -198,10 +198,7 @@ function Game({ onHome, onFinish }) {
   }, [feedback]);
 
   return (
-    <div
-      className="quiz-container state-quiz"
-      style={{ minHeight: "100vh", background: "#FAF7F4" }}
-    >
+    <div className="quiz-container state-quiz">
       <div className="state-quiz-header">
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
@@ -214,53 +211,28 @@ function Game({ onHome, onFinish }) {
         <button className="sq-box sq-home sq-emoji" onClick={onHome}>🏠</button>
       </div>
 
-      {/* Top spacer; paired with the equal-flex controls wrapper below so the
-          image keeps its original vertical position while the controls center
-          in the gap beneath it. */}
-      <div style={{ flex: 1 }} />
-
-      <div
-        style={{
-          position: "relative",
-          alignSelf: "center",
-          flexShrink: 0,
-          width: "min(68vh, 88vw)",
-          height: "min(68vh, 88vw)",
-        }}
-      >
-        <img
-          key={a.code}
-          src={`${IMG_BASE}${a.code}.jpg`}
-          alt="Satellite view of an airport"
-          style={{
-            display: "block",
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
-        />
-        {/* North compass indicator — satellite images are north-up. */}
-        <svg
-          width="56"
-          height="56"
-          viewBox="0 0 36 36"
-          aria-hidden="true"
-          style={{ position: "absolute", top: "8px", right: "8px", pointerEvents: "none" }}
-        >
-          <circle cx="18" cy="18" r="16" fill="rgba(255,255,255,0.75)" stroke="#111" strokeWidth="1.5" />
-          <text x="18" y="11" textAnchor="middle" fontSize="9" fontWeight="700" fill="#111">N</text>
-          <polygon points="18,13 13.5,24 18,21 22.5,24" fill="#111" />
-        </svg>
+      {/* Flexible stage: takes the room left between the top bar and the
+          controls. The square frame inside scales down to fit whatever is
+          available (capped at the desktop size), so the image never overflows
+          on short or narrow screens. */}
+      <div className="sat-stage">
+        <div className="sat-frame">
+          <img
+            key={a.code}
+            src={`${IMG_BASE}${a.code}.jpg`}
+            alt="Satellite view of an airport"
+            className="sat-image"
+          />
+          {/* North compass indicator — satellite images are north-up. */}
+          <svg className="sat-compass" viewBox="0 0 36 36" aria-hidden="true">
+            <circle cx="18" cy="18" r="16" fill="rgba(255,255,255,0.75)" stroke="#111" strokeWidth="1.5" />
+            <text x="18" y="11" textAnchor="middle" fontSize="9" fontWeight="700" fill="#111">N</text>
+            <polygon points="18,13 13.5,24 18,21 22.5,24" fill="#111" />
+          </svg>
+        </div>
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-        }}
-      >
+      <div className="sat-controls-slot">
         <div className="quiz-controls">
           <p className="prompt" style={{ fontWeight: 700 }}>Which airport is shown?</p>
           <AirportGuessInput

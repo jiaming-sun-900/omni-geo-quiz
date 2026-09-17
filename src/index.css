@@ -1,5 +1,10 @@
+/* Root type scale. Almost every size in the app is expressed in rem, so these
+   breakpoints scale the whole UI at once. Desktop (>900px) is unchanged. */
 html {
   font-size: 19px;
+  /* Stop iOS from inflating text when the device is rotated to landscape. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 @media (max-width: 900px) {
@@ -14,16 +19,53 @@ html {
   }
 }
 
+@media (max-width: 400px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Landscape phones: very little vertical room, so shrink the scale further
+   than width alone would. */
+@media (max-height: 480px) and (orientation: landscape) {
+  html {
+    font-size: 15px;
+  }
+}
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+/* Safe-area insets, exposed as variables so components can opt in without
+   repeating the env() fallback dance. Zero everywhere except notched phones. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
 html,
 body,
 #root {
   min-height: 100vh;
+}
+
+/* 100vh on mobile Safari measures the viewport with the URL bar collapsed, so a
+   "full height, no scroll" layout ends up taller than what's actually on
+   screen. dvh tracks the visible area instead.
+   This is an @supports block rather than two stacked declarations because the
+   Lightning CSS minifier drops the earlier of two same-property declarations,
+   which would take the vh fallback with it. */
+@supports (min-height: 100dvh) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
 }
 
 body {
@@ -34,10 +76,26 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: #FAF7F4;
   color: #1a1a2e;
+  /* Decorative overflow (the globe canvas is drawn wider than its box) must
+     never produce a horizontal scrollbar. */
+  overflow-x: hidden;
 }
 
 #root {
   display: flex;
   flex-direction: column;
   background: #FAF7F4;
+}
+
+/* Touch targets: skip the 300ms double-tap-to-zoom delay, and don't let a
+   long-press select the label text of a button. */
+button,
+a,
+input {
+  touch-action: manipulation;
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
 }

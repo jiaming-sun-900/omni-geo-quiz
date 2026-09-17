@@ -3,6 +3,7 @@ import {
   stateAbbreviations,
   getStateSuggestions,
 } from "../data/states";
+import { isTouchDevice } from "../utils/isTouch";
 
 export default function StateGuessInput({ onSubmit, disabled }) {
   const [value, setValue] = useState("");
@@ -11,12 +12,14 @@ export default function StateGuessInput({ onSubmit, disabled }) {
   const inputRef = useRef();
   const wrapperRef = useRef();
 
+  // Clear the field when a new round starts. Refocusing is skipped on touch
+  // devices so the on-screen keyboard doesn't cover the map/image unasked.
   useEffect(() => {
     if (!disabled) {
       setValue("");
       setOpen(false);
       setHighlighted(-1);
-      inputRef.current?.focus();
+      if (!isTouchDevice()) inputRef.current?.focus();
     }
   }, [disabled]);
 
@@ -85,7 +88,7 @@ export default function StateGuessInput({ onSubmit, disabled }) {
           placeholder="State name or abbreviation..."
           disabled={disabled}
           autoComplete="off"
-          autoFocus
+          autoFocus={!isTouchDevice()}
         />
         {open && suggestions.length > 0 && (
           <ul className="autocomplete-dropdown" role="listbox">

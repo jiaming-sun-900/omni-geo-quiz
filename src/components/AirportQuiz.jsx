@@ -104,7 +104,7 @@ function Game({
       ) : (
         <>
           This airport is a hub for:
-          <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1.4rem" }}>
+          <ul>
             {a.hubs.map((h) => (
               <li key={h}>{h}</li>
             ))}
@@ -139,10 +139,7 @@ function Game({
   }, [feedback]);
 
   return (
-    <div
-      className="quiz-container state-quiz"
-      style={{ minHeight: "100vh", background: "#FAF7F4" }}
-    >
+    <div className="quiz-container state-quiz">
       <div className="state-quiz-header">
         <div className="sq-right">
           <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>

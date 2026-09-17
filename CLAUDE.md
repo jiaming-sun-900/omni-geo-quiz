@@ -117,8 +117,9 @@ The established visual language across all screens. New UI should conform to it.
   offset shadow `3px 3px 0px #111` (no blur), `border-radius: 12px`. On hover/press the
   button shifts 2px down-right and the shadow reduces, giving a physical press feel.
 - **Corner info boxes** (Round, Score, Start Over, Home): equal-size squares using the
-  same button style above. In quizzes they sit in fixed corners — Round/Score/Start Over
-  stacked top-right, Home bottom-left.
+  same button style above. On the desktop layout they sit in fixed corners —
+  Round/Score/Start Over stacked top-right, Home bottom-left. Below 1025px (or on a short
+  viewport) they collapse into a single compact top bar; see Responsive Layout.
 - **Control panel**: a bordered container with the same hard-shadow style; each row has a
   left-aligned label and a right-aligned ON/OFF button.
 - **ON/OFF toggle buttons**: retro push-button style. OFF state shows black text; ON state
@@ -126,6 +127,93 @@ The established visual language across all screens. New UI should conform to it.
 - **Layout**: every screen uses a no-scroll, full-viewport layout.
 - **Map**: a blank white US continental map rendered with the Albers USA projection — no
   state borders or labels visible by default.
+
+## Responsive Layout
+
+Everything is driven by the root font size plus a stack of media-query tiers at the bottom of
+`src/App.css`. Anything wider than 1024px **and** taller than 620px renders the original
+desktop layout untouched; the tiers only add overrides below that.
+
+- **Root scale** (`src/index.css`): `19px` → `18px` (≤900) → `17px` (≤600) → `16px` (≤400)
+  → `15px` (landscape under 480px tall). Nearly every size in the app is a `rem`, so these
+  five values rescale the whole UI at once.
+- **Tier 1 — ≤900px**: the home screen stacks into a single column; globe, title and menu
+  panel shrink so the whole screen still fits an iPad portrait without scrolling.
+  A separate `901–1220px` block trims the menu type so entry names stay on one line in
+  the narrow two-column layout (tablet landscape / small laptop).
+- **Tier 2 — ≤1024px *or* ≤620px tall**: the quiz chrome leaves the corners and joins the
+  flow. `.state-quiz-header` becomes a real top bar holding Round/Score/Shuffle, the Home
+  button is pinned to the container's top-left (the empty half of that same row), and
+  `.sq-toggles` becomes a compact horizontal row under the map. Nothing is layered over
+  anything else, so the map/image gets whatever room is left.
+- **Tier 3 — ≤600px**: phone sizing. The guess form rewraps so the text field gets its own
+  full-width row with Hint + Submit sharing the row beneath it (matched via
+  `.guess-form > [type="submit"]`, since the three inputs style Submit differently). The
+  sub-mode modal squares shrink to `min(42vw, 13rem)`.
+- **Tier 4 — ≤400px / ≤380px / landscape**: last-resort tightening. The `[ENTER]` menu tag
+  is dropped below 380px; landscape phones get every vertical margin trimmed.
+
+The home screen additionally has **height**-driven tiers, because its content (globe +
+title + five menu rows) is the tallest thing in the app. These must stay mutually
+disjoint — they set the same properties, so any overlap means "whichever block is last in
+the file wins" and the layout grows again instead of shrinking. The live partition is:
+
+| Tier | Condition |
+| --- | --- |
+| short phone | `≤600px` wide and `≤800px` / `≤700px` tall |
+| landscape phone | `≤520px` tall, landscape |
+| short stacked home | `601–900px` wide, `521–720px` tall |
+| short two-column home | `≥901px` wide, `521–720px` tall |
+
+Everything fits without scrolling from 360×780 up; only 320×568 and 568×320 still scroll,
+which is fine now that `.home-screen` scrolls rather than clipping (see below).
+
+Other pieces of the system:
+
+- **Content sizing is measured, not guessed.** `USMap` sizes its projection from the
+  measured `.us-map-wrap` box (via `ResizeObserver`), not from a fixed fraction of the
+  viewport, so it shrinks correctly once surrounding chrome takes real space. The wrapper
+  is `flex: 1; min-height: 0; overflow: hidden`, so its size is decided by the layout and
+  never by the SVG inside it — measuring it cannot feed back into its own size. The
+  original desktop cap now lives in CSS as `.us-map-wrap { max-height: 66vh }` (lifted to
+  `none` in the compact tier), so it's already baked into the measured box — don't
+  reintroduce a vh term in `computeDims`.
+- **Satellite image sizing**: `.sat-stage` is the same kind of flexible box, with
+  `container-type: size`; the square `.sat-frame` inside it is sized
+  `height: min(100cqh, 100cqw, 68vh, 88vw)`. Both of the stage's dimensions have to
+  constrain a square — a width-driven one overflows a short stage, a height-driven one
+  overflows a narrow stage, and `aspect-ratio` does **not** transfer a `max-*` cap back to
+  the axis you set explicitly (a plain `height: 100% + max-width` letterboxes the frame and
+  `object-fit: cover` then crops the image). Container units express both limits at once.
+  The `68vh` term is the original desktop size, so large screens are unchanged.
+- **Write fallbacks as `@supports`, not stacked declarations.** Lightning CSS drops the
+  earlier of two same-property declarations, so the classic
+  `min-height: 100vh; min-height: 100dvh` pattern ships only the `dvh` line. Both the
+  `dvh` heights and the container-query frame sizing therefore keep their fallback in the
+  base rule and put the modern value inside `@supports (…)`, which the minifier can't
+  collapse. Same class of trap as the `backdrop-filter` prefix note above — check
+  `dist/assets/*.css` after touching either.
+- **Desktop collision guard**: `.state-quiz` sets `--map-inset` / `--controls-inset`, which
+  reserve horizontal room for the floating corner boxes and the toggle panel so the
+  centered map and prompt can never slide underneath them in a narrow desktop window. The
+  compact tier sets both to `0`.
+- **Mobile viewport**: `index.html` uses `viewport-fit=cover`; `:root` exposes
+  `--safe-top/right/bottom/left` from `env(safe-area-inset-*)`, and every fixed/absolute
+  corner control adds them to its offset. Heights use `100dvh` (with a `100vh` fallback,
+  see the @supports note) so mobile Safari's collapsing URL bar cannot push content off-screen.
+- **Touch**: the quiz inputs skip `autoFocus` on touch devices (`src/utils/isTouch.js`)
+  so the on-screen keyboard doesn't cover the map before you've seen it. Under
+  `@media (hover: none)` the retro press animation is driven by `:active` instead of
+  `:hover`, which would otherwise stick after a tap. `@media (pointer: coarse)` gives the
+  ON/OFF toggles and the Reset View button a 34px minimum height.
+  `prefers-reduced-motion` disables the dot pop/ripple and the globe's fan animation.
+- **Never clip, scroll instead**: `.home-screen` is `overflow-y: auto`, and it centers with
+  auto margins on its columns rather than `align-items/justify-content: center` — auto
+  margins collapse to zero once the content is taller than the container, so the top of
+  the page stays reachable. Centering a scroll container the usual way puts the overflow
+  out of reach.
+- **The globe's speed fan** opens to the left below 820px (`.globe-fan { right: 100% }`),
+  since its button sits close to the right edge once the globe column is full-width.
 
 ## GitHub Pages Deployment
 
