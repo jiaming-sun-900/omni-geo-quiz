@@ -8,7 +8,7 @@ const Globe = lazy(() => import("./Globe"));
 
 // Stand-in shown while that chunk is in flight. It reuses the real widget's
 // class names so it occupies exactly the same rows (disc + dots + controls +
-// Reset View) and the column can't reflow when the globe arrives; only the disc
+// Reset View + credit) and the column can't reflow when the globe arrives; only the disc
 // draws anything, as a retro-styled empty circle.
 function GlobePlaceholder() {
   const reserved = { visibility: "hidden" };
@@ -38,6 +38,9 @@ function GlobePlaceholder() {
       <button className="globe-reset" style={reserved} disabled tabIndex={-1}>
         Reset View
       </button>
+      <p className="globe-credit" style={reserved}>
+        Planet textures Solar System Scope · CC BY 4.0
+      </p>
     </div>
   );
 }

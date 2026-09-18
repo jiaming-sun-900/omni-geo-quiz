@@ -29,42 +29,28 @@ const FAN_POS = [-80, -26.67, 26.67, 80].map((deg) => {
   return { x: Math.cos(a) * FAN_RADIUS, y: Math.sin(a) * FAN_RADIUS };
 });
 
+// Planet textures are self-hosted under public/textures/ rather than hotlinked
+// from Wikimedia Commons. They used to be fetched from the Commons CDN at click
+// time, which made a core piece of the home screen depend on a third party at
+// runtime — an offline or filtered network, or a renamed Commons file, silently
+// fell back to a flat colour. All five are CC BY 4.0 by Solar System Scope; the
+// credit is rendered under the globe controls (see `.globe-credit`).
+const TEX_BASE = `${import.meta.env.BASE_URL}textures/`;
+
 // The swappable spheres. Earth uses the locally-painted canvas texture
 // (continents + ocean); the others load equirectangular planet photos. Saturn
 // additionally gets a tilted 3D ring (see the Three.js setup effect below).
 const PLANETS = [
   { id: "earth", name: "Earth", color: "#4A90B8" },
-  {
-    id: "mars",
-    name: "Mars",
-    color: "#C1440E",
-    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Solarsystemscope_texture_8k_mars.jpg/1280px-Solarsystemscope_texture_8k_mars.jpg",
-  },
-  {
-    id: "jupiter",
-    name: "Jupiter",
-    color: "#C88B3A",
-    url: "https://upload.wikimedia.org/wikipedia/commons/b/be/Solarsystemscope_texture_2k_jupiter.jpg",
-  },
-  {
-    id: "saturn",
-    name: "Saturn",
-    color: "#C8A96E",
-    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Solarsystemscope_texture_8k_saturn.jpg/1280px-Solarsystemscope_texture_8k_saturn.jpg",
-  },
-  {
-    id: "neptune",
-    name: "Neptune",
-    color: "#3F54BA",
-    url: "https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg",
-  },
+  { id: "mars", name: "Mars", color: "#C1440E", url: `${TEX_BASE}mars.jpg` },
+  { id: "jupiter", name: "Jupiter", color: "#C88B3A", url: `${TEX_BASE}jupiter.jpg` },
+  { id: "saturn", name: "Saturn", color: "#C8A96E", url: `${TEX_BASE}saturn.jpg` },
+  { id: "neptune", name: "Neptune", color: "#3F54BA", url: `${TEX_BASE}neptune.jpg` },
 ];
 
 // Saturn's ring texture: a radial slice (with alpha) from the same Solar System
-// Scope set as the planet photos above. Hosted on Wikimedia (CORS-enabled for
-// WebGL); the solarsystemscope.com original sends no CORS header.
-const SATURN_RING_URL =
-  "https://upload.wikimedia.org/wikipedia/commons/7/7d/Solarsystemscope_texture_2k_saturn_ring_alpha.png";
+// Scope set as the planet photos above.
+const SATURN_RING_URL = `${TEX_BASE}saturn-ring-alpha.png`;
 
 const land = topojson.feature(countriesAtlas, countriesAtlas.objects.land);
 
@@ -250,7 +236,6 @@ export default function Globe() {
     // Lazily-loaded planet textures, keyed by planet id. Earth is ready now.
     const textures = { earth: earthTexture };
     const loader = new THREE.TextureLoader();
-    loader.setCrossOrigin("anonymous");
 
     // Every texture here is fetched over the network, so a load can still land
     // after this effect is torn down. The callbacks below all bail on this flag:
@@ -358,6 +343,53 @@ export default function Globe() {
       }, RESUME_DELAY);
     });
 
+    // Cursor affordance: show the grab hand over the planet so it reads as
+    // draggable. This has to be a raycast, not `cursor: grab` in CSS — the
+    // canvas is CANVAS_SCALE (2.5×) the size of the visible disc and fully
+    // transparent outside the planet, so a blanket rule would put the grab hand
+    // over a large empty region of the home screen. Saturn's ring is included
+    // because dragging it rotates the globe just the same. `grabbing` holds for
+    // the whole drag even once the pointer slides off the sphere.
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let overPlanet = false;
+    let grabbing = false;
+    const applyCursor = () => {
+      renderer.domElement.style.cursor = grabbing
+        ? "grabbing"
+        : overPlanet
+          ? "grab"
+          : "";
+    };
+    const onPointerMove = (e) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hit =
+        raycaster.intersectObjects(ring.visible ? [sphere, ring] : [sphere], false)
+          .length > 0;
+      if (hit !== overPlanet) {
+        overPlanet = hit;
+        applyCursor();
+      }
+    };
+    const onPointerLeave = () => {
+      overPlanet = false;
+      applyCursor();
+    };
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerleave", onPointerLeave);
+    controls.addEventListener("start", () => {
+      grabbing = true;
+      applyCursor();
+    });
+    controls.addEventListener("end", () => {
+      grabbing = false;
+      applyCursor();
+    });
+
     // Reset view — smoothly animate the camera back to the default
     // equator-facing position, then resume auto-rotation.
     let reset = null;
@@ -437,6 +469,8 @@ export default function Globe() {
       cancelAnimationFrame(frame);
       clearResume();
       observer.disconnect();
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       controls.dispose();
       renderer.dispose();
       Object.values(textures).forEach((t) => t.dispose());
@@ -537,6 +571,27 @@ export default function Globe() {
       <button className="globe-reset" onClick={() => apiRef.current?.reset()}>
         Reset View
       </button>
+
+      {/* CC BY 4.0 requires attribution, and the four planet photos are used
+          under it. Kept to one small line so the home column stays short. */}
+      <p className="globe-credit">
+        Planet textures{" "}
+        <a
+          href="https://www.solarsystemscope.com/textures/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Solar System Scope
+        </a>{" "}
+        ·{" "}
+        <a
+          href="https://creativecommons.org/licenses/by/4.0/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          CC BY 4.0
+        </a>
+      </p>
     </div>
   );
 }

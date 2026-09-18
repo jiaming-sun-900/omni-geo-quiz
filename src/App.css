@@ -125,6 +125,28 @@
   box-shadow: 2px 2px 0px #111;
 }
 
+/* Attribution for the CC BY 4.0 planet photos. Needs the same relative +
+   z-index + pointer-events treatment as .globe-reset above: the oversized globe
+   canvas overflows down across this row and would otherwise eat the links'
+   clicks. #6E6E7A is the design system's secondary text colour (4.71:1). */
+.globe-credit {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  margin: 0.55rem 0 0;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  text-align: center;
+  color: #6E6E7A;
+}
+.globe-credit a {
+  color: inherit;
+  text-decoration: underline;
+}
+.globe-credit a:hover {
+  color: #1a1a2e;
+}
+
 /* Planet indicator dots — one per planet, centered on the globe's axis between
    the sphere and the playback controls. Active planet is a filled black circle;
    inactive ones are hollow with a black border. Click to jump to that planet. */

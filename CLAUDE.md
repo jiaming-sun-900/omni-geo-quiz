@@ -249,10 +249,23 @@ West, Midwest, South, Southeast, Northeast, Non-contiguous).
   `{name, iata, city, country, region, lat, lng, imageFile}`.
 - **`src/data/usGeo.js`** — the us-atlas TopoJSON as GeoJSON: `nation` and `states`.
 
-Entries in the two world files tagged `// VERIFY` have coordinates or a crop that has
-not yet been checked against the fetched image — 18 remain in `satellite-world-cities.js`
-and 10 in `satellite-world-airports.js`. `docs/world-*-quiz-roster.md` holds the rosters
-those pools were built from.
+**The `// VERIFY` tags are gone — all 28 were reviewed against their fetched images** (18
+cities, 10 airports; round 3 of the review). 26 came out clean: the coordinate matches the
+claimed place and the frame is playable. Two did not, and both are now precise comments on
+their own data line rather than a vague tag:
+
+- **Mumbai** — coordinate is right, but the committed image has a **plain white
+  missing-imagery block over its lower-left quadrant** at zoom 12. Zoom moved to 13, which
+  draws a different tile set; this one **must be re-fetched and re-checked**.
+- **KUL** — coordinate is right, but at zoom 12 the airfield filled only ~25% of the frame
+  and the Sepang circuit read as large as the airport. Zoom moved to 13.
+
+Two more were noted in `scripts/fetch-satellite.js` and deliberately **not** changed,
+because the current images are playable and a blind coordinate nudge can't be verified
+without spending fetch quota: **Havana** (top ~45% of the frame is featureless ocean) and
+**Nairobi** (sits deep enough into the national park that the city is a top-left sliver —
+arguably intentional, since the park edge is its `funFact`). `docs/world-*-quiz-roster.md`
+holds the rosters these pools were built from.
 
 **Coordinates have been machine-verified**, not eyeballed: every US city and airport
 point tests inside its claimed state via point-in-polygon against `usGeo.js`. That sweep
@@ -272,13 +285,18 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 - Requests use `scale=2` with `size=640x640` (1280×1280 px output), `maptype=satellite`,
   `format=jpg`, north-up orientation. Per-entry zoom and coordinate overrides live in the
   script. Re-runs skip images that already exist.
-- **The committed images predate `format=jpg`**, so despite their `.jpg` names they are
-  still the API's default png8: 256-colour indexed PNG, ~1.2 MB each, 233 MB over 204
-  files (`file public/satellite/cities/Chicago.jpg` says `PNG image data ... 8-bit
-  colormap`). That is visible colour banding on continuous-tone imagery, 10.7–12.2 MB
-  downloaded per 10-round game depending on mode, and still ~23% of the 1 GB GitHub Pages
-  limit. Converting the set means deleting a target's directory and re-fetching it, which
-  costs API quota, so it hasn't been done.
+- **The committed images are now real JPEG, re-encoded locally at 1024px / quality 82.**
+  They used to predate `format=jpg` and so, despite their `.jpg` names, were still the
+  API's default png8: 256-colour indexed PNG, ~1.2 MB each, **233 MB** over 204 files.
+  That was visible colour banding, 10.7–12.2 MB per 10-round game, and ~23% of the 1 GB
+  GitHub Pages limit. The set is now **103 MB** (~4.7 MB per game) and the dither is gone,
+  so it actually looks *better* than the original at the size `.sat-frame` displays.
+  Re-encoding at the original 1280px only reached ~700 KB a file, because JPEG has to
+  spend bits encoding the quantization dither — **downscaling first is what pays off**, and
+  1024px still covers the frame's retina size. Done with `sips` in place, so it cost no API
+  quota; note the old blobs stay in git history, so a fresh clone is unchanged in size even
+  though the Pages deploy shrank. Future fetches return 1280px JPEGs straight from the API
+  (`format=jpg` is already set), which is fine — no need to match 1024 exactly.
 - **The `airports` target fetches only `satellite-airports.js`.** It used to union that
   with `airports.js`, which is the *blank-map* pool and renders no imagery at all — so 18
   images (20.9 MB) were committed that no code path could ever load. They have been
@@ -306,6 +324,14 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   cleanup makes both the success and fallback callbacks bail (disposing the orphan texture).
   Planet switching itself does not leak — `textures` caches by id — but visiting all five
   holds ~30–40 MB of GPU texture.
+- **The grab cursor over the planet is a raycast, not CSS.** `cursor: grab` on
+  `.globe-disc canvas` would be far simpler and is wrong: the canvas is 2.5× the visible
+  disc (see the next note) and fully transparent outside the planet, so the grab hand would
+  follow the pointer across a large empty region of the home screen. A `pointermove`
+  handler raycasts against the sphere — plus the ring while Saturn is up, since dragging it
+  rotates the globe just the same — and sets the cursor only on a hit. `grabbing` is driven
+  off the OrbitControls `start`/`end` events so it holds for the whole drag even once the
+  pointer slides off the sphere.
 - **The globe canvas is displayed at 250%, on purpose.** `.globe-disc canvas` is
   `width/height: 250%` with `margin: -75%` and `overflow: visible` on the disc, so Saturn's
   ring at radius 2.2 isn't clipped and the camera zooms out to match. The drawing buffer is
@@ -333,13 +359,22 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 - **Touch targets**: review links are `inline-flex` with `min-height: 40px` (measured
   85×40px). As inline anchors the padding alone did nothing and they were ~28px — below even
   the 34px the same block grants `.push-toggle`.
-- **Globe texture failures**: the planet photos are hotlinked from Wikimedia, so they can
-  fail (offline, blocked network, a renamed Commons file). `setPlanet` therefore clears the
-  outgoing photo immediately and passes an `onError` that paints the planet's flat base
-  colour. Without it a failed load left the *previous* planet's texture on the sphere while
-  the label read the new one, so an unreachable Mars looked exactly like Earth. These
-  textures are CC BY (Solar System Scope) and are not yet credited anywhere in the UI;
-  self-hosting them under `public/` would also remove the runtime dependency on Wikimedia.
+- **Globe textures are self-hosted** under `public/textures/` (four planet photos +
+  Saturn's ring slice, 990 kB total), built from `TEX_BASE` off `import.meta.env.BASE_URL`.
+  They used to be hotlinked from Wikimedia Commons, which made a core piece of the home
+  screen depend on a third party at runtime — offline, a filtered network or a renamed
+  Commons file all silently degraded it. `loader.setCrossOrigin("anonymous")` went with
+  them; it existed only for the cross-origin CDN.
+- **The `onError` fallback still matters** even self-hosted, and must stay: `setPlanet`
+  clears the outgoing photo immediately and paints the planet's flat base colour on
+  failure. Without it a failed load left the *previous* planet's texture on the sphere while
+  the label read the new one, so an unreachable Mars looked exactly like Earth.
+- **The textures are CC BY 4.0 (Solar System Scope), and the licence requires
+  attribution** — `.globe-credit` under the Reset View button carries it. It needs the same
+  `position: relative` + `z-index: 1` + `pointer-events: auto` treatment as
+  `.globe-reset`, because the oversized globe canvas overflows down across that row and
+  would otherwise eat the links' clicks. `GlobePlaceholder` in `HomeScreen.jsx` reserves
+  the row too, so the column still can't reflow when the globe chunk lands.
 - **The answer inputs are cleared by remount, not by an effect.** Each of the three input
   components used to clear its field from an effect keyed on `disabled`, which was the
   project's only three lint errors (`react-hooks/set-state-in-effect`). The effect is gone;

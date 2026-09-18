@@ -82,10 +82,21 @@ const WORLD_CITY_ZOOM_OVERRIDES = {
   "Mexico City": 13, "São Paulo": 13, "Buenos Aires": 13, Marrakech: 13,
   Zanzibar: 13, Melbourne: 13, "Gold Coast": 13,
   // 大尺度地貌型 -> 12
-  "Hong Kong": 12, Mumbai: 12, Istanbul: 12, Santorini: 12, Reykjavik: 12,
+  "Hong Kong": 12, Istanbul: 12, Santorini: 12, Reykjavik: 12,
   Vancouver: 12, Havana: 12, "Panama City": 12, "Rio de Janeiro": 12,
   Santiago: 12, Cartagena: 12, "La Paz": 12, "Cape Town": 12, Nairobi: 12,
   Lagos: 12, Auckland: 12, Wellington: 12, Nadi: 12,
+  // Round 3 image-review adjustments (off their seeded tier):
+  //   Mumbai 12 -> 13 (dropped from the map, so it takes the default): at 12 the
+  //   returned tile set has a hole in it — the committed image carries a plain
+  //   white block over its lower-left quadrant. Re-fetch and re-check this one.
+  // Observed but NOT changed, because the current images are still playable and
+  // a blind nudge can't be verified without spending fetch quota:
+  //   Havana — the top ~45% of the frame is featureless open ocean; nudging the
+  //     center SE (roughly lat 23.12, lng -82.35) would balance it.
+  //   Nairobi — sits deep enough into the national park that the city is only a
+  //     top-left sliver. Intentional (the park edge is the funFact), but ~lat
+  //     -1.32 would show more of both.
 };
 
 // Per-world-city center coordinate overrides; entries not listed use the lat/lng
@@ -101,7 +112,7 @@ const WORLD_CITY_COORD_OVERRIDES = {};
 // Expect several review rounds; adjust these per-airport as Jiaming sends notes.
 const WORLD_AIRPORT_ZOOM_OVERRIDES = {
   // 大型复合型 -> 12
-  PKX: 12, HKG: 12, HND: 12, ICN: 12, KUL: 12, AUH: 12, IST: 12, GIG: 12,
+  PKX: 12, HKG: 12, HND: 12, ICN: 12, AUH: 12, IST: 12, GIG: 12,
   SYD: 12,
   // 紧凑跑道型 -> 14
   SHA: 14, ITM: 14, DPS: 14, LGW: 14, YUL: 14, SCL: 14, LIM: 14, CPT: 14,
@@ -111,6 +122,10 @@ const WORLD_AIRPORT_ZOOM_OVERRIDES = {
   //     LHR, SIN, YYZ, MAD — dropped from the map so they take the default 13.
   //   13 -> 12 (framed too tight): KEF
   //   13 -> 14 (framed too loose): CTS
+  // Round 3 image-review adjustments:
+  //   12 -> 13 (framed too wide): KUL — dropped from the map above, so it takes
+  //     the default. At 12 the airfield covered only ~25% of the frame and the
+  //     Sepang circuit read as large as the airport.
   KEF: 12, CTS: 14,
 };
 
