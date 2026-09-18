@@ -16,7 +16,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Match the version the lock file is generated with locally; a
+          # mismatch is what let package-lock.json drift out of sync with
+          # package.json unnoticed until this workflow first ran.
+          node-version: 24
           cache: npm
 
       - run: npm ci
