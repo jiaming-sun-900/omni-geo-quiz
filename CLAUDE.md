@@ -274,7 +274,12 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 ## Satellite Imagery
 
 - Images are stored in `public/satellite/{airports,cities,world-airports,world-cities}/`.
-- Generated via `scripts/fetch-satellite.js` using the Google Maps Static API.
+- Generated via `scripts/fetch-satellite.js` using the Google Maps Static API. **The key
+  that produced this set no longer works** — it was on a Google Cloud free trial that has
+  since lapsed, and the GCP project now reports `Billing is disabled`, so the script
+  cannot run until a real billing account is attached (a card is required even for the
+  free monthly tier). Assume re-fetching is unavailable and reach for a crop of the
+  1280px original in git history first.
 - Run with: `GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=airports`
   (default), `--target=cities`, `--target=world-cities` or `--target=world-airports`.
 - Requests use `scale=2` with `size=640x640` (1280×1280 px output), `maptype=satellite`,
@@ -292,22 +297,35 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   quota; note the old blobs stay in git history, so a fresh clone is unchanged in size even
   though the Pages deploy shrank. Future fetches return 1280px JPEGs straight from the API
   (`format=jpg` is already set), which is fine — no need to match 1024 exactly.
-- **Two images are crops, not fetches**, and a re-fetch would overwrite both:
-  `world-cities/Mumbai_India.jpg` is **928px** and `world-airports/KUL.jpg` is **800px**,
-  where everything else is 1024px. Mumbai's fetch came back with a **plain white
-  missing-imagery block over the lower-left quadrant** — all of it open sea, so cropping to
-  the right/lower part of the frame removed the hole *and* gave a better composition (the
-  peninsula now fills the frame instead of sharing it with empty ocean). KUL framed the
-  airfield at only ~25% of the frame, and a centred crop is arithmetically the same thing
-  as zooming in, so it now reads at ~50% with all three runways and the Sepang circuit
-  still in shot. Both were cut from the 1280px png8 originals recovered via
-  `git show 7467ee8^:<path>`, so no resolution was lost to the earlier 1024px pass. They
-  are below the frame's retina size and will look marginally softer on a high-DPI screen;
-  that was judged a good trade against a white hole and a 25%-of-frame airport. The zoom
-  overrides in the fetch script were still moved to 13 for both, so a future re-fetch
-  lands closer to these crops — but **check both images after any re-fetch of the
-  `world-cities` or `world-airports` targets**, because the fetched version will not be
-  the crop.
+- **Four images are crops, not fetches**, and a re-fetch would overwrite them:
+  `Mumbai_India.jpg` (928px), `Havana_Cuba.jpg` and `Nairobi_Kenya.jpg` (860px) under
+  `world-cities/`, and `world-airports/KUL.jpg` (800px), where everything else is 1024px.
+  **Cropping is the repair route of choice here**, because the API key that fetched this
+  set was on a lapsed free trial and no longer works — see the note at the end of this
+  section. All four were cut from the 1280px png8 originals recovered via
+  `git show 7467ee8^:<path>`, so nothing was downscaled twice.
+  - **Mumbai** came back with a plain white missing-imagery block over the lower-left
+    quadrant — all of it open sea, so cropping it away removed the hole *and* improved the
+    composition; the peninsula now fills the frame.
+  - **KUL** framed the airfield at ~25% of the frame. A centred crop is arithmetically the
+    same operation as zooming in, so it now reads at ~50% with all three runways and the
+    Sepang circuit still in shot.
+  - **Havana** was ~45% featureless ocean; the crop drops that to ~20% and makes the
+    Y-shaped harbour and the old-town grid the subject.
+  - **Nairobi** showed the city as a top-left sliver. The crop balances it to roughly half
+    city, half park, keeping the national park's hard straight boundary — which is the
+    whole point, since the park is its `funFact`.
+
+  All four are below the frame's retina size and look marginally softer on a high-DPI
+  screen; judged a good trade in every case. The fetch script's zoom overrides were moved
+  to 13 for Mumbai and KUL so a future re-fetch lands near the crop, but **re-check these
+  four after any re-fetch of the `world-cities` or `world-airports` targets** — the
+  fetched version will not be the crop.
+- **Kyoto is a known-weak frame that cropping cannot fix.** Its coordinate is Kinkaku-ji,
+  but the Golden Pavilion reads as nothing from directly overhead — a small dark pond in
+  trees, verified by cropping the original down to an 820m-wide frame. So the image is
+  left wide, where it at least reads as Kyoto's street grid against the western hills.
+  Fixing it properly means choosing a different landmark, which means a re-fetch.
 - **The `airports` target fetches only `satellite-airports.js`.** It used to union that
   with `airports.js`, which is the *blank-map* pool and renders no imagery at all — so 18
   images (20.9 MB) were committed that no code path could ever load. They have been
