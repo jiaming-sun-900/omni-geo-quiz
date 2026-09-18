@@ -16,13 +16,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Match the version the lock file is generated with locally; a
-          # mismatch is what let package-lock.json drift out of sync with
-          # package.json unnoticed until this workflow first ran.
+          # Matches the version used for local development.
           node-version: 24
           cache: npm
 
-      - run: npm ci
+      # `npm install`, not `npm ci`, and deliberately so. `@napi-rs/wasm-runtime`
+      # declares @emnapi/{core,runtime} as peer dependencies, and it is reached
+      # only through @rolldown/binding-wasm32-wasi — an optional,
+      # platform-gated package. npm therefore resolves those peers differently
+      # depending on the host: a lock file generated on macOS pins 1.10.0 (or
+      # omits the top-level entries entirely), while this Linux runner wants
+      # 1.11.3, so `npm ci` refuses to install. Regenerating the lock locally
+      # can't fix it — each attempt produces a tree that matches macOS, not the
+      # runner. `npm ci` would only be honest here if the lock were generated on
+      # Linux; until then this installs from package.json and the gate below is
+      # what actually matters.
+      - run: npm install --no-audit --no-fund
 
       - run: npm run lint
 
