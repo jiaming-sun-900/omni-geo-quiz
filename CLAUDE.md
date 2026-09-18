@@ -16,6 +16,9 @@ interactive Three.js globe.
 - `npm run build` — production build to `dist/`
 - `npm run preview` — preview production build locally
 - `npm run lint` — ESLint; **must stay at zero errors**, CI fails the build otherwise
+- `npm run deploy` — `gh-pages -d dist`; publishes the **current `dist/`**, so run
+  `npm run build` first or you will re-publish a stale one. Deployment is manual and CI
+  does not do it (see CI, below).
 
 ## Stack
 
@@ -38,15 +41,31 @@ mode.
 inside HomeScreen behind its own `<Suspense>`. Adding a mode means adding a
 `lazy()` line and a `QUIZZES` entry, nothing else.
 
-Globe has to be split because Three.js + OrbitControls is ~649 kB and Globe also
-imports `d3-geo`, `topojson-client` and `world-atlas/countries-110m.json`. While
-it sat in the entry chunk, a player who only opens a satellite mode — which needs
-none of that — still downloaded all of it, and the earlier claim here that d3-geo
-and topojson were deferred was simply false. Current split: entry **197 kB**
-(62 kB gzip), `Globe` 647 kB, `USMap` (us-atlas TopoJSON) 179 kB, each quiz
-4–16 kB. The Globe `<Suspense>` fallback reuses the real `.globe-*` class names
-and keeps the three control rows at `visibility: hidden`, so it reserves the exact
-same four rows and the home screen doesn't reflow when the globe arrives.
+Current split: entry **197 kB** (62 kB gzip), `Globe` **647 kB** (178 kB gzip),
+`USMap` (us-atlas TopoJSON) 179 kB, each quiz 4–16 kB.
+
+**Be precise about what splitting Globe buys, because this paragraph has twice
+claimed more than it delivers.** There is no router: every visitor lands on
+HomeScreen, HomeScreen mounts `<Globe>`, so *almost everyone downloads the Globe
+chunk anyway*. The win is **time-to-paint, not bytes** — the title and the five
+menu rows render immediately instead of waiting on Three.js to download and
+parse. Don't re-justify it as "satellite players skip it"; they don't.
+
+**The Globe chunk cannot be made meaningfully smaller** (measured, so it isn't
+re-litigated): Three.js + OrbitControls bundled alone with esbuild is 731 kB raw
+/ 187 kB gzip, while the whole chunk — Three plus `d3-geo`, `topojson-client` and
+`world-atlas/countries-110m.json` — is 647 kB / 178 kB. The chunk is *smaller*
+than Three alone measures standalone, so Rollup's tree-shaking is already doing
+real work and **Three.js is the floor**. Trimming the atlas to the `land` object
+Globe actually uses (it never touches `objects.countries`) saves **4 kB gzip** and
+costs a derived copy of upstream data in the repo — not worth it. The only real
+lever left is removing the 3D globe itself.
+
+The Globe `<Suspense>` fallback reuses the real `.globe-*` class names and keeps
+the four control rows (dots, transport controls, Reset View, texture credit) at
+`visibility: hidden`, so it reserves exactly the same five rows and the home
+screen doesn't reflow when the globe arrives. **Adding a row to Globe means
+adding it to `GlobePlaceholder` too.**
 
 **USMap.jsx** is the shared map component used by the map-based quiz modes (State, City, and the Airport Blank Map). It renders an SVG with:
 - All continental US state paths filled white with white stroke (no visible state borders)
@@ -129,8 +148,9 @@ without answering is correctly not recorded), and hands the array up through
 `onFinish(score, review)`. Each entry is
 `{ round, correct, guess, answer, wiki, lat, lng, image?, zoom? }` — `image` only in the
 satellite modes, where it's the same file the round just displayed and is therefore already
-cached (revalidated, and decoded from the full 1280px source, so the thumbnails carry
-`loading="lazy"` / `decoding="async"` and explicit dimensions). `zoom` overrides the map
+cached (revalidated, and decoded from the full-size source — 1024px for most entries, see
+Satellite Imagery — so the thumbnails carry `loading="lazy"` / `decoding="async"` and
+explicit dimensions). `zoom` overrides the map
 link's default city-level zoom; only the State Quiz passes it (`6`), because its
 coordinates are a random point inside the state rather than a landmark, and zoom 13
 would open on an arbitrary field.
@@ -218,9 +238,9 @@ first option on open and closes on Escape or a backdrop click.
 The satellite quizzes share `AirportGuessInput` (it takes an optional `placeholder` and a
 custom `getSuggestions`), the floating `FeedbackBubble` / hint-bubble behavior, and
 `SatelliteImage.jsx` — one component holding the loading, error and retry states for all
-four modes. Before it existed each rendered a bare `<img>` with no `onError`: at ~1.2 MB
-an image, a slow connection showed an unexplained blank square and a 404 showed a
-broken-image glyph with no way to recover. It is inline-styled rather than adding to
+four modes. Before it existed each rendered a bare `<img>` with no `onError`: the images
+were ~1.2 MB each at the time (~0.5 MB now), so a slow connection showed an unexplained
+blank square and a 404 showed a broken-image glyph with no way to recover. It is inline-styled rather than adding to
 `App.css`.
 
 Note the two *airport/city* variants use **different** region groupings: the Airport quiz
@@ -250,17 +270,13 @@ West, Midwest, South, Southeast, Northeast, Non-contiguous).
 - **`src/data/usGeo.js`** — the us-atlas TopoJSON as GeoJSON: `nation` and `states`.
 
 **The `// VERIFY` tags are gone — all 28 were reviewed against their fetched images** (18
-cities, 10 airports; round 3 of the review). 26 came out clean straight away. Two were
-defective and were **fixed by cropping the 1280px original out of git history**, with no
-API call — see "Two images are crops, not fetches" below. Every coordinate in both files
-is confirmed correct; the two problems were framing, not position.
-
-Two more were noted in `scripts/fetch-satellite.js` and deliberately **not** changed,
-because the current images are playable and a blind coordinate nudge can't be verified
-without spending fetch quota: **Havana** (top ~45% of the frame is featureless ocean) and
-**Nairobi** (sits deep enough into the national park that the city is a top-left sliver —
-arguably intentional, since the park edge is its `funFact`). `docs/world-*-quiz-roster.md`
-holds the rosters these pools were built from.
+cities, 10 airports). **Every coordinate in both files is confirmed correct**; the only
+problems found were framing, and four frames were repaired by cropping the 1280px original
+out of git history rather than re-fetching. The per-image detail lives in **Satellite
+Imagery → "Four images are crops, not fetches"** — don't duplicate it here, since the two
+copies already drifted apart once. One frame (Kyoto) is knowingly weak and cannot be fixed
+without a re-fetch; that is documented in the same place.
+`docs/world-*-quiz-roster.md` holds the rosters these pools were built from.
 
 **Coordinates have been machine-verified**, not eyeballed: every US city and airport
 point tests inside its claimed state via point-in-polygon against `usGeo.js`. That sweep
@@ -301,8 +317,8 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   `Mumbai_India.jpg` (928px), `Havana_Cuba.jpg` and `Nairobi_Kenya.jpg` (860px) under
   `world-cities/`, and `world-airports/KUL.jpg` (800px), where everything else is 1024px.
   **Cropping is the repair route of choice here**, because the API key that fetched this
-  set was on a lapsed free trial and no longer works — see the note at the end of this
-  section. All four were cut from the 1280px png8 originals recovered via
+  set was on a lapsed free trial and no longer works (see the second bullet of this
+  section). All four were cut from the 1280px png8 originals recovered via
   `git show 7467ee8^:<path>`, so nothing was downscaled twice.
   - **Mumbai** came back with a plain white missing-imagery block over the lower-left
     quadrant — all of it open sea, so cropping it away removed the hole *and* improved the
@@ -337,14 +353,13 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 
 ## Key Technical Notes
 
-- **CSS minification**: `vite.config.js` uses Lightning CSS (`transformer` and
-  `cssMinify`) so the modal's `backdrop-filter` keeps both the standard property and an
-  emitted `-webkit-` prefix. The default esbuild minifier collapsed the hand-written pair
-  to just `-webkit-`, breaking the blur in Firefox.
-- **Globe** (`Globe.jsx`): Three.js with `OrbitControls`, delta-time rotation (frame-rate
-  independent), cycling through five planets (Earth, Mars, Jupiter, Saturn, Neptune).
-  Earth uses a locally-painted canvas texture; the others lazy-load equirectangular
-  photos, and Saturn renders a 3D ring.
+### Globe
+
+- **What it is** (`Globe.jsx`): Three.js with `OrbitControls`, delta-time rotation
+  (frame-rate independent), cycling through five planets (Earth, Mars, Jupiter, Saturn,
+  Neptune). Earth uses a locally-painted canvas texture built from `d3-geo` +
+  `world-atlas`; the other four lazy-load equirectangular photos, and Saturn renders a
+  3D ring.
 - **Globe teardown has two non-obvious cases.** Saturn's ring texture is *not* in the
   `textures` map (which is keyed by planet id), so it needs its own disposal —
   `Material.dispose()` does not dispose textures, and without it one GPU texture leaked per
@@ -353,6 +368,22 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   cleanup makes both the success and fallback callbacks bail (disposing the orphan texture).
   Planet switching itself does not leak — `textures` caches by id — but visiting all five
   holds ~30–40 MB of GPU texture.
+- **Globe textures are self-hosted** under `public/textures/` (four planet photos +
+  Saturn's ring slice, 996 kB total), built from `TEX_BASE` off `import.meta.env.BASE_URL`.
+  They used to be hotlinked from Wikimedia Commons, which made a core piece of the home
+  screen depend on a third party at runtime — offline, a filtered network or a renamed
+  Commons file all silently degraded it. `loader.setCrossOrigin("anonymous")` went with
+  them; it existed only for the cross-origin CDN.
+- **The `onError` fallback still matters** even self-hosted, and must stay: `setPlanet`
+  clears the outgoing photo immediately and paints the planet's flat base colour on
+  failure. Without it a failed load left the *previous* planet's texture on the sphere while
+  the label read the new one, so an unreachable Mars looked exactly like Earth.
+- **The textures are CC BY 4.0 (Solar System Scope), and the licence requires
+  attribution** — `.globe-credit` under the Reset View button carries it. It needs the same
+  `position: relative` + `z-index: 1` + `pointer-events: auto` treatment as
+  `.globe-reset`, because the oversized globe canvas overflows down across that row and
+  would otherwise eat the links' clicks. `GlobePlaceholder` in `HomeScreen.jsx` reserves
+  the row too, so the column still can't reflow when the globe chunk lands.
 - **The grab cursor over the planet is a raycast, not CSS.** `cursor: grab` on
   `.globe-disc canvas` would be far simpler and is wrong: the canvas is 2.5× the visible
   disc (see the next note) and fully transparent outside the planet, so the grab hand would
@@ -368,8 +399,9 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   oversampling. Don't "optimize" the 250× multiplier away; it leaves the buffer stretched
   over a 2.5× larger canvas and the globe goes blurry. `resize()` does bail when the
   measurement is unchanged, so a window drag no longer reallocates the buffer per tick.
-- All quiz screens share the same retro button style documented in the Design System
-  section below.
+
+### Accessibility
+
 - **Autocomplete accessibility**: the three answer fields (`StateGuessInput`,
   `GuessInput`, `AirportGuessInput`) are ARIA comboboxes — the input carries
   `role="combobox"`, `aria-expanded`, `aria-controls`, `aria-autocomplete="list"` and
@@ -388,22 +420,9 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 - **Touch targets**: review links are `inline-flex` with `min-height: 40px` (measured
   85×40px). As inline anchors the padding alone did nothing and they were ~28px — below even
   the 34px the same block grants `.push-toggle`.
-- **Globe textures are self-hosted** under `public/textures/` (four planet photos +
-  Saturn's ring slice, 990 kB total), built from `TEX_BASE` off `import.meta.env.BASE_URL`.
-  They used to be hotlinked from Wikimedia Commons, which made a core piece of the home
-  screen depend on a third party at runtime — offline, a filtered network or a renamed
-  Commons file all silently degraded it. `loader.setCrossOrigin("anonymous")` went with
-  them; it existed only for the cross-origin CDN.
-- **The `onError` fallback still matters** even self-hosted, and must stay: `setPlanet`
-  clears the outgoing photo immediately and paints the planet's flat base colour on
-  failure. Without it a failed load left the *previous* planet's texture on the sphere while
-  the label read the new one, so an unreachable Mars looked exactly like Earth.
-- **The textures are CC BY 4.0 (Solar System Scope), and the licence requires
-  attribution** — `.globe-credit` under the Reset View button carries it. It needs the same
-  `position: relative` + `z-index: 1` + `pointer-events: auto` treatment as
-  `.globe-reset`, because the oversized globe canvas overflows down across that row and
-  would otherwise eat the links' clicks. `GlobePlaceholder` in `HomeScreen.jsx` reserves
-  the row too, so the column still can't reflow when the globe chunk lands.
+
+### Quiz input
+
 - **The answer inputs are cleared by remount, not by an effect.** Each of the three input
   components used to clear its field from an effect keyed on `disabled`, which was the
   project's only three lint errors (`react-hooks/set-state-in-effect`). The effect is gone;
@@ -412,10 +431,23 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   it. If you touch this, preserve all three behaviours it carries: the field clears on a new
   round, Shuffle still remounts, and `autoFocus={!isTouchDevice()}` stays — focusing on
   remount on a phone pops the keyboard over the map before the player has seen it.
-- **CI** (`.github/workflows/ci.yml`): install → `npm run lint` → `npm run build` on push
-  and PR to `main`, with no `continue-on-error`. **`npm run lint` must stay at zero
-  errors** — the gate exists because it was previously running nowhere. No deploy job;
-  publishing is still a manual `gh-pages -d dist`.
+
+### Build, CSS and CI
+
+- **CSS minification**: `vite.config.js` uses Lightning CSS (`transformer` and
+  `cssMinify`) so the modal's `backdrop-filter` keeps both the standard property and an
+  emitted `-webkit-` prefix. The default esbuild minifier collapsed the hand-written pair
+  to just `-webkit-`, breaking the blur in Firefox.
+- **CI** (`.github/workflows/ci.yml`): Node 24, `npm install --no-audit --no-fund` →
+  `npm run lint` → `npm run build`, on push and PR to `main`, with no `continue-on-error`.
+  **`npm run lint` must stay at zero errors** — the gate exists because it was previously
+  running nowhere. No deploy job; publishing is a manual `npm run deploy`.
+- **CI installs with `npm install`, not `npm ci` — leave it that way.** `npm ci` demands
+  that `package-lock.json` match `package.json` exactly, and this lockfile is generated on
+  macOS while CI runs on Linux; the optional platform-specific dependencies (Rollup's and
+  Lightning CSS's native binaries) resolve differently across the two, so `npm ci` fails on
+  Linux against a macOS-generated lock. Switching to `npm ci` "for reproducibility" will
+  red the build.
 
 ## Design System
 
@@ -443,7 +475,10 @@ The established visual language across all screens. New UI should conform to it.
   without colour.**
 - **Text colours**: secondary/meta text is `#6E6E7A` (4.71:1 on `#FAF7F4`). The former
   `#888` was 3.3–3.5:1, below AA.
-- **Layout**: every screen uses a no-scroll, full-viewport layout.
+- **Layout**: screens are designed to fit the viewport without scrolling, and size
+  themselves to it. Two deliberate exceptions, both documented below: **ResultsScreen**
+  scrolls (it lists all 10 rounds), and **`.home-screen`** is `overflow-y: auto` so a very
+  short viewport can reach the top of the page instead of clipping it.
 - **Map**: a blank white US continental map rendered with the Albers USA projection — no
   state borders or labels visible by default.
 
