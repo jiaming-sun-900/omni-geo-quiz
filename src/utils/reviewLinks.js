@@ -23,11 +23,14 @@ export function wikipediaUrl(query) {
 
 // Google Maps' documented Maps URLs API, opened on the satellite basemap at the
 // exact coordinates the round used — so the link picks up right where the quiz
-// image stopped and the player can pan out from there.
-export function satelliteMapUrl(lat, lng, zoom = 13) {
+// image stopped and the player can pan out from there. The default zoom suits a
+// city or an airport; entries whose coordinates are not a landmark (the State
+// Quiz picks a random point inside the state) pass their own.
+export function satelliteMapUrl(lat, lng, zoom) {
+  const z = zoom ?? 13;
   return (
     "https://www.google.com/maps/@?api=1&map_action=map" +
-    `&center=${lat},${lng}&zoom=${zoom}&basemap=satellite`
+    `&center=${lat},${lng}&zoom=${z}&basemap=satellite`
   );
 }
 

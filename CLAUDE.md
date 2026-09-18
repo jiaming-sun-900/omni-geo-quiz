@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge through several game modes (State, City, Airport, and Airport Satellite). No backend; deployable to GitHub Pages. The home screen also features an interactive Three.js globe.
+Omni Geo Quiz — a React + D3.js quiz app testing geography knowledge through
+five game modes: US State, US City, US Airport (each with a blank-map and, for
+City/Airport, a satellite sub-mode), World City and World Airport (satellite
+only). No backend; deployable to GitHub Pages. The home screen also features an
+interactive Three.js globe.
 
 ## Commands
 
@@ -22,7 +26,17 @@ Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge throug
 
 ## Architecture
 
-**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"` | `"airport"` | `"airport-satellite"` | `"city-satellite"`) to switch between HomeScreen and quiz components.
+**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"` |
+`"airport"` | `"airport-satellite"` | `"city-satellite"` |
+`"world-city-satellite"` | `"world-airport-satellite"`) to switch between
+HomeScreen and the quiz components, which live in a `QUIZZES` lookup keyed by
+mode.
+
+**Code splitting.** HomeScreen (and Three.js with it) is in the initial bundle;
+every quiz mode is a `React.lazy` import behind one `<Suspense>` with the
+`.mode-loading` fallback. This keeps d3-geo, topojson and the us-atlas TopoJSON
+(a ~179 kB chunk) out of first load for players who only open a satellite mode.
+Adding a mode means adding a `lazy()` line and a `QUIZZES` entry, nothing else.
 
 **USMap.jsx** is the shared map component used by the map-based quiz modes (State, City, and the Airport Blank Map). It renders an SVG with:
 - All continental US state paths filled white with white stroke (no visible state borders)
@@ -30,16 +44,58 @@ Omni Geo Quiz — a React + D3.js quiz app testing US geography knowledge throug
 - An optional red dot at `dotPosition` (projected via AlbersUsa)
 - Optional green highlight on a revealed state via `revealedStateId`
 
-It exports `states` (filtered GeoJSON features excluding AK, HI, and territories) for use by StateQuiz.
+**Dot radius scales with the rendered map width** (`w / 160`, clamped to
+2.5–6px, so the ceiling is already reached at desktop map widths and only the
+compact layouts shrink the dot). A fixed radius covers a growing share of the country as the map
+shrinks: at 6px the dot is wider than Rhode Island (5.4 × 7.7px projected) on a
+390px phone map, and wider than DC (5.2 × 6.3px) even on the widest desktop map,
+which turned those rounds into guesswork. Tying it to the width keeps the dot
+covering the same geographic area at every size, and the 6px ceiling leaves the
+desktop look unchanged.
 
-**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx / CitySatelliteQuiz.jsx** follow the same pattern: a wrapper component holds `gameKey` and `result`, and a `Game` inner component handles round logic. Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10 rounds, tracks score, and calls `onFinish(score, review)` to show ResultsScreen.
+**The geometry lives in `src/data/usGeo.js`**, not in USMap: `nation` plus
+`states` (GeoJSON features excluding only the territories AS/GU/MP/PR/VI —
+**Alaska and Hawaii are kept**, since geoAlbersUsa draws them in the bottom-left
+insets and they are fair quiz targets). It is its own module because a file that
+exports both a component and plain data breaks Vite's fast refresh. StateQuiz
+imports `states` from there and filters out the District of Columbia (FIPS `11`)
+for its own pool: DC is not a state, and at map scale a dot on it also covers
+Maryland and Virginia, so the three are indistinguishable.
+
+**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx /
+CitySatelliteQuiz.jsx / WorldCitySatelliteQuiz.jsx /
+WorldAirportSatelliteQuiz.jsx** all follow the same pattern: a wrapper component
+holds `gameKey` and `result`, and a `Game` inner component handles round logic.
+Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10
+rounds, tracks score, and calls `onFinish(score, review)` to show ResultsScreen.
+The map modes' overlay toggles (Rivers / Mountains / State Borders) are held by
+the **wrapper**, above the remount, so Start Over resets the score and round but
+leaves the overlays as the player set them. `Game` seeds its first round with
+`pick…(new Set())` rather than the used-index ref, because reading a ref during
+render is a React rules violation.
+
+**Advancing past the feedback bubble** (`utils/useAdvanceOnDismiss.js`): one
+shared hook, used by all seven `Game`s, attaches the window `keydown`/`click`
+listeners that advance the round while the bubble is up. Attaching them from an
+effect keyed on the bubble's visibility is what stops the very keypress that
+submitted the answer from dismissing it, and `onAdvance` is read through a ref
+refreshed after each render so the handler always sees the current round without
+re-attaching. Clicks inside `.sq-toggles`, `.state-quiz-header` and
+`.sq-bottom-left` are ignored: those controls own their own clicks, and before
+the exception existed, flipping an overlay to double-check an answer also burned
+the round.
 
 **End-of-game review.** Every `Game` accumulates one entry per answered round in a
 `reviewRef` (pushed from `handleGuess`, so a Shuffle / New Image that replaces the target
 without answering is correctly not recorded), and hands the array up through
 `onFinish(score, review)`. Each entry is
-`{ round, correct, guess, answer, wiki, lat, lng, image? }` — `image` only in the satellite
-modes, where it's the same file the round just displayed and is therefore already cached.
+`{ round, correct, guess, answer, wiki, lat, lng, image?, zoom? }` — `image` only in the
+satellite modes, where it's the same file the round just displayed and is therefore already
+cached (revalidated, and decoded from the full 1280px source, so the thumbnails carry
+`loading="lazy"` / `decoding="async"` and explicit dimensions). `zoom` overrides the map
+link's default city-level zoom; only the State Quiz passes it (`6`), because its
+coordinates are a random point inside the state rather than a landmark, and zoom 13
+would open on an arbitrary field.
 `ResultsScreen` renders all 10 rounds with misses sorted first (stable sort, so each group
 stays in round order), and gives every entry a Wikipedia and a satellite-map link built by
 `src/utils/reviewLinks.js`. Both links are generated from data the quizzes already carry,
@@ -59,7 +115,9 @@ Note the results screen is the one screen in the app allowed to scroll.
 ## Game Modes
 
 Selected from HomeScreen. The City and Airport tiles open a sub-mode modal (Blank Map
-vs. Satellite) before launching.
+vs. Satellite) before launching; the two World tiles are satellite-only and launch
+directly. The modal is a `role="dialog"` / `aria-modal` container that moves focus to its
+first option on open and closes on Escape or a backdrop click.
 
 - **US State Quiz** — blank Albers USA map, a random point inside a state; user guesses
   the state name.
@@ -79,6 +137,15 @@ vs. Satellite) before launching.
   shows a satellite image from `public/satellite/airports/{CODE}.jpg`, drawn from the
   curated `src/data/satellite-airports.js` pool; user guesses the airport. Two-level
   hints reveal region (US Census-style) then state.
+- **World City Quiz** (`WorldCitySatelliteQuiz.jsx`, mode `"world-city-satellite"`) —
+  satellite image from `public/satellite/world-cities/{imageFile}`, pool
+  `src/data/satellite-world-cities.js` (54 cities); user guesses the city. Four hint
+  levels: region → country → first letter → the entry's `funFact`.
+- **World Airport Quiz** (`WorldAirportSatelliteQuiz.jsx`, mode
+  `"world-airport-satellite"`) — satellite image from
+  `public/satellite/world-airports/{IATA}.jpg`, pool
+  `src/data/satellite-world-airports.js` (60 airports); accepts the IATA code, the full
+  airport name or the city. Four hint levels: continent → country → city → IATA code.
 
 Both satellite quizzes share `AirportGuessInput` (it takes an optional `placeholder` and a
 custom `getSuggestions`) and the floating `FeedbackBubble` / hint-bubble behavior. Note the
@@ -97,16 +164,33 @@ Southeast, Northeast, Non-contiguous).
   `{name, lat, lng, state, imageFile}`) — the pool for the City Satellite Quiz.
   `imageFile` is the city name with spaces → underscores (the two Portlands carry a
   `_Oregon` / `_Maine` suffix).
+- **`src/data/satellite-world-cities.js`** — 54 world cities
+  `{name, lat, lng, country, region, funFact, imageFile}`; `funFact` is the last hint.
+- **`src/data/satellite-world-airports.js`** — 60 world airports
+  `{name, iata, city, country, region, lat, lng, imageFile}`.
+- **`src/data/usGeo.js`** — the us-atlas TopoJSON as GeoJSON: `nation` and `states`.
+
+Entries in the two world files tagged `// VERIFY` have coordinates or a crop that has
+not yet been checked against the fetched image. `docs/world-*-quiz-roster.md` holds the
+rosters those pools were built from.
 
 ## Satellite Imagery
 
-- Images are stored in `public/satellite/airports/` and `public/satellite/cities/`.
+- Images are stored in `public/satellite/{airports,cities,world-airports,world-cities}/`.
 - Generated via `scripts/fetch-satellite.js` using the Google Maps Static API.
 - Run with: `GOOGLE_MAPS_API_KEY=your_key node scripts/fetch-satellite.js --target=airports`
-  (default) or `--target=cities`.
+  (default), `--target=cities`, `--target=world-cities` or `--target=world-airports`.
 - Requests use `scale=2` with `size=640x640` (1280×1280 px output), `maptype=satellite`,
-  north-up orientation. Per-entry zoom overrides live in the script. Re-runs skip images
-  that already exist.
+  `format=jpg`, north-up orientation. Per-entry zoom and coordinate overrides live in the
+  script. Re-runs skip images that already exist.
+- **The committed images predate `format=jpg`**, so despite their `.jpg` names they are
+  still the API's default png8: 256-colour indexed PNG, ~1.2 MB each, 254 MB over 222
+  files (`file public/satellite/cities/Chicago.jpg` says `PNG image data ... 8-bit
+  colormap`). That is visible colour banding on continuous-tone imagery, ~14 MB
+  downloaded per 10-round game, and a quarter of the 1 GB GitHub Pages limit. Converting
+  the set means deleting a target's directory and re-fetching it, which costs API quota,
+  so it hasn't been done. `public/satellite/airports/` also holds 18 images for airports
+  that are in `airports.js` but not in the satellite pool, and so are never shown.
 - Airport files are named `{CODE}.jpg`; city files are `{CityName}.jpg` with spaces →
   underscores, and a `_{State}` suffix is appended to duplicate city names (e.g. Portland)
   to avoid collisions.
@@ -123,6 +207,27 @@ Southeast, Northeast, Non-contiguous).
   photos, and Saturn renders a 3D ring.
 - All quiz screens share the same retro button style documented in the Design System
   section below.
+- **Autocomplete accessibility**: the three answer fields (`StateGuessInput`,
+  `GuessInput`, `AirportGuessInput`) are ARIA comboboxes — the input carries
+  `role="combobox"`, `aria-expanded`, `aria-controls`, `aria-autocomplete="list"` and
+  `aria-activedescendant` pointing at `${listId}-opt-${i}`, with `listId` from `useId()`.
+  The dropdown already had `role="listbox"`/`role="option"`; without the input side of the
+  pair a screen reader was never told the suggestions existed and arrow-key movement was
+  silent.
+- **Globe texture failures**: the planet photos are hotlinked from Wikimedia, so they can
+  fail (offline, blocked network, a renamed Commons file). `setPlanet` therefore clears the
+  outgoing photo immediately and passes an `onError` that paints the planet's flat base
+  colour. Without it a failed load left the *previous* planet's texture on the sphere while
+  the label read the new one, so an unreachable Mars looked exactly like Earth. These
+  textures are CC BY (Solar System Scope) and are not yet credited anywhere in the UI;
+  self-hosting them under `public/` would also remove the runtime dependency on Wikimedia.
+- **Known lint exceptions**: `npm run lint` is clean except for three
+  `react-hooks/set-state-in-effect` errors, one per answer-input component. They are the
+  effect that clears the field when a new round starts (keyed on `disabled`). Removing it
+  means remounting each input via a `key` that includes the round, across all seven
+  quizzes, and the focus/clear behaviour is the same in every mode — worth doing
+  deliberately rather than as a drive-by, since the payoff is one avoided re-render per
+  round.
 
 ## Design System
 
@@ -132,9 +237,11 @@ The established visual language across all screens. New UI should conform to it.
 - **Buttons** (all interactive buttons): white background, solid black border, hard
   offset shadow `3px 3px 0px #111` (no blur), `border-radius: 12px`. On hover/press the
   button shifts 2px down-right and the shadow reduces, giving a physical press feel.
-- **Corner info boxes** (Round, Score, Start Over, Home): equal-size squares using the
-  same button style above. On the desktop layout they sit in fixed corners —
-  Round/Score/Start Over stacked top-right, Home bottom-left. Below 1025px (or on a short
+- **Corner info boxes** (Round, Score, Shuffle / New Image, Home): equal-size squares
+  using the same button style above. On the desktop layout they sit in fixed corners —
+  Round/Score/Shuffle stacked top-right, Home bottom-left. The Home button is icon-only,
+  so it (like the two results-screen buttons) carries an `aria-label` with the emoji
+  marked `aria-hidden`. Below 1025px (or on a short
   viewport) they collapse into a single compact top bar; see Responsive Layout.
 - **Control panel**: a bordered container with the same hard-shadow style; each row has a
   left-aligned label and a right-aligned ON/OFF button.

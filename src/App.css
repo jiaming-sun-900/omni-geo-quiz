@@ -1,3 +1,15 @@
+/* Suspense fallback while a code-split quiz mode loads. Same background as
+   every other screen, so the handover reads as a pause rather than a flash. */
+.mode-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FAF7F4;
+  color: #777;
+  font-size: 1.1rem;
+}
+
 /* Home Screen — two columns filling the viewport, no scroll */
 .home-screen {
   flex: 1;

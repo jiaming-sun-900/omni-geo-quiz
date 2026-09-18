@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import AirportGuessInput from "./AirportGuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
+import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 import { airportWikiQuery } from "../utils/reviewLinks";
 import { satelliteWorldAirports } from "../data/satellite-world-airports";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
@@ -91,7 +92,9 @@ function Game({ onHome, onFinish }) {
   const usedIndices = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
-  const [current, setCurrent] = useState(() => pickAirport(usedIndices.current));
+  // Seeded with an empty set rather than usedIndices.current: nothing is used
+  // yet on mount, and reading a ref during render is a React rules violation.
+  const [current, setCurrent] = useState(() => pickAirport(new Set()));
   const [feedback, setFeedback] = useState(null);
   // hintLevel: 0 = none, 1 = continent, 2 = country, 3 = city, 4 = IATA code.
   // hintOpen tracks bubble visibility; the level persists while dismissed. Both
@@ -174,25 +177,8 @@ function Game({ onHome, onFinish }) {
 
   const reveal = `${a.name} (${a.iata}) — ${a.city}, ${a.country}`;
 
-  // While the bubble is up, the next Enter press or click anywhere advances the
-  // round (or finishes). Listeners attach after this render so the submitting
-  // event doesn't immediately dismiss the bubble.
-  useEffect(() => {
-    if (!feedback) return;
-    const onKey = (e) => {
-      if (e.key === "Enter" && !e.repeat) {
-        e.preventDefault();
-        handleNext();
-      }
-    };
-    const onClick = () => handleNext();
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("click", onClick);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("click", onClick);
-    };
-  }, [feedback]);
+  // Enter or a click anywhere advances the round while the bubble is up.
+  useAdvanceOnDismiss(!!feedback, handleNext);
 
   return (
     <div className="quiz-container state-quiz">
@@ -205,7 +191,14 @@ function Game({ onHome, onFinish }) {
       </div>
 
       <div className="sq-bottom-left">
-        <button className="sq-box sq-home sq-emoji" onClick={onHome}>🏠</button>
+        <button
+          className="sq-box sq-home sq-emoji"
+          onClick={onHome}
+          aria-label="Back to home screen"
+          title="Home"
+        >
+          <span aria-hidden="true">🏠</span>
+        </button>
       </div>
 
       {/* Flexible stage: takes the room left between the top bar and the
@@ -238,7 +231,7 @@ function Game({ onHome, onFinish }) {
             disabled={!!feedback}
             onHint={handleHint}
             onHintClose={closeHint}
-            hintDisabled={hintLevel >= HINT_MAX}
+            hintMaxed={hintLevel >= HINT_MAX}
             hintLevel={hintLevel}
             hintOpen={hintOpen}
             hintText={hintText}

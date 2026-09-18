@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Favicon in the app's own visual language: warm off-white plate, hard black
+       outline, no gradients. The sphere echoes the home screen globe. -->
+  <rect width="64" height="64" rx="14" fill="#FAF7F4" stroke="#111" stroke-width="4"/>
+  <circle cx="32" cy="32" r="17" fill="#4A90B8" stroke="#111" stroke-width="3"/>
+  <path d="M20 26c6 3 8-2 13 1s6-3 11-1M18 38c7-2 9 3 14 1s7 2 13-1"
+        fill="none" stroke="#FAF7F4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="41" cy="23" r="4.5" fill="#e53e3e" stroke="#FAF7F4" stroke-width="2"/>
+</svg>

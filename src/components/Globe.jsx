@@ -252,33 +252,60 @@ export default function Globe() {
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
 
-    // Load Saturn's ring texture once and apply it to the ring material.
-    loader.load(SATURN_RING_URL, (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      ringMaterial.map = tex;
-      ringMaterial.needsUpdate = true;
-    });
+    // Load Saturn's ring texture once and apply it to the ring material. A
+    // failure here just leaves the untextured ring geometry, which still reads
+    // as a ring, so there is nothing to fall back to.
+    loader.load(
+      SATURN_RING_URL,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        ringMaterial.map = tex;
+        ringMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {}
+    );
 
     const setPlanet = (id) => {
       ring.visible = id === "saturn";
+      const planet = PLANETS.find((p) => p.id === id);
       const apply = (tex) => {
         sphere.material.map = tex;
+        sphere.material.color.set("#ffffff");
+        sphere.material.needsUpdate = true;
+      };
+      // The photo textures are fetched from Wikimedia at click time, so they can
+      // fail: offline, a blocked network, or a Commons file that got renamed.
+      // Without this the sphere kept the PREVIOUS planet's texture while the
+      // label read the new one, so a failed Mars looked exactly like Earth. Fall
+      // back to the planet's flat base colour instead: plainly not a photo, but
+      // at least it is the right planet.
+      const applyFallbackColour = () => {
+        sphere.material.map = null;
+        sphere.material.color.set(planet?.color || "#888888");
         sphere.material.needsUpdate = true;
       };
       if (textures[id]) {
         apply(textures[id]);
         return;
       }
-      const planet = PLANETS.find((p) => p.id === id);
       if (!planet?.url) return;
-      loader.load(planet.url, (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        textures[id] = tex;
-        apply(tex);
-      });
+      loader.load(
+        planet.url,
+        (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.RepeatWrapping;
+          textures[id] = tex;
+          apply(tex);
+        },
+        undefined,
+        applyFallbackColour
+      );
+      // Clear the outgoing planet's photo right away so the wrong texture is
+      // never shown while the new one is in flight.
+      applyFallbackColour();
     };
 
     // Drag to rotate freely; zoom and pan disabled. Auto-rotation is handled

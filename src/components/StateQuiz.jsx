@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from "react";
-import USMap, { states } from "./USMap";
+import { useState, useRef } from "react";
+import USMap from "./USMap";
+import { states } from "../data/usGeo";
 import StateGuessInput from "./StateGuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
+import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 import { getRandomPointInState } from "../utils/randomPoint";
 import { matchesState } from "../data/states";
 
@@ -20,23 +22,37 @@ function wikiTitleForState(name) {
   return WIKI_TITLE[name] || name;
 }
 
+// The District of Columbia (FIPS 11) is drawn on the map but never asked. It is
+// not a state, and at map scale it is unanswerable anyway: projected onto the
+// widest desktop map it measures 5.2 x 6.3px, so the red dot sitting on it also
+// covers Maryland and Virginia and the three are indistinguishable.
+const QUIZ_POOL = states.filter((s) => s.id !== "11");
+
 function pickRound(usedIds) {
-  const available = states.filter((s) => !usedIds.has(s.id));
-  const pool = available.length > 0 ? available : states;
+  const available = QUIZ_POOL.filter((s) => !usedIds.has(s.id));
+  const pool = available.length > 0 ? available : QUIZ_POOL;
   const state = pool[Math.floor(Math.random() * pool.length)];
   const point = getRandomPointInState(state);
   return { state, point };
 }
 
-function Game({ onHome, onFinish }) {
+function Game({
+  onHome,
+  onFinish,
+  showRivers,
+  setShowRivers,
+  showMountains,
+  setShowMountains,
+  showBorders,
+  setShowBorders,
+}) {
   const usedIds = useRef(new Set());
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
-  const [current, setCurrent] = useState(() => pickRound(usedIds.current));
+  // Seeded with an empty set rather than usedIds.current: nothing is used yet
+  // on mount, and reading a ref during render is a React rules violation.
+  const [current, setCurrent] = useState(() => pickRound(new Set()));
   const [feedback, setFeedback] = useState(null);
-  const [showRivers, setShowRivers] = useState(false);
-  const [showMountains, setShowMountains] = useState(false);
-  const [showBorders, setShowBorders] = useState(false);
   // Bumped on each Shuffle; used as the guess input's key so remounting clears
   // the field (the new target may repeat, so identity alone isn't reliable).
   const [shuffleId, setShuffleId] = useState(0);
@@ -60,6 +76,10 @@ function Game({ onHome, onFinish }) {
       wiki: wikiTitleForState(current.state.properties.name),
       lng: current.point[0],
       lat: current.point[1],
+      // The coordinates are a random point inside the state, not a landmark, so
+      // the default city-level zoom would open on an arbitrary field. Zoom 6
+      // frames the whole state instead.
+      zoom: 6,
     });
     setFeedback({ correct, answer: current.state.properties.name });
     usedIds.current.add(current.state.id);
@@ -83,26 +103,8 @@ function Game({ onHome, onFinish }) {
     setShuffleId((n) => n + 1);
   };
 
-  // While the bubble is up, the next Enter press or click anywhere advances the
-  // round (or finishes). Listeners attach after this render, so the very event
-  // that submitted the answer doesn't immediately dismiss the bubble. Reuses
-  // handleNext, so the game logic is unchanged.
-  useEffect(() => {
-    if (!feedback) return;
-    const onKey = (e) => {
-      if (e.key === "Enter" && !e.repeat) {
-        e.preventDefault();
-        handleNext();
-      }
-    };
-    const onClick = () => handleNext();
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("click", onClick);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("click", onClick);
-    };
-  }, [feedback]);
+  // Enter or a click anywhere advances the round while the bubble is up.
+  useAdvanceOnDismiss(!!feedback, handleNext);
 
   return (
     <div className="quiz-container state-quiz">
@@ -115,7 +117,14 @@ function Game({ onHome, onFinish }) {
       </div>
 
       <div className="sq-bottom-left">
-        <button className="sq-box sq-home sq-emoji" onClick={onHome}>🏠</button>
+        <button
+          className="sq-box sq-home sq-emoji"
+          onClick={onHome}
+          aria-label="Back to home screen"
+          title="Home"
+        >
+          <span aria-hidden="true">🏠</span>
+        </button>
       </div>
 
       <USMap
@@ -188,6 +197,11 @@ export default function StateQuiz({ onHome }) {
   const [gameKey, setGameKey] = useState(0);
   // { score, review } — null until the last round is answered.
   const [result, setResult] = useState(null);
+  // Toggle state lives here (above the gameKey remount) so Start Over resets
+  // score/round but preserves the overlay toggles — same as City/Airport.
+  const [showRivers, setShowRivers] = useState(false);
+  const [showMountains, setShowMountains] = useState(false);
+  const [showBorders, setShowBorders] = useState(false);
 
   const restart = () => {
     setResult(null);
@@ -206,5 +220,17 @@ export default function StateQuiz({ onHome }) {
     );
   }
 
-  return <Game key={gameKey} onHome={onHome} onFinish={(score, review) => setResult({ score, review })} />;
+  return (
+    <Game
+      key={gameKey}
+      onHome={onHome}
+      onFinish={(score, review) => setResult({ score, review })}
+      showRivers={showRivers}
+      setShowRivers={setShowRivers}
+      showMountains={showMountains}
+      setShowMountains={setShowMountains}
+      showBorders={showBorders}
+      setShowBorders={setShowBorders}
+    />
+  );
 }

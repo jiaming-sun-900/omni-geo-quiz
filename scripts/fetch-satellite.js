@@ -245,12 +245,23 @@ async function main() {
     }
 
     const zoom = target.zoom(entry);
+    // format=jpg matters twice over. Without it the Static Maps API defaults to
+    // png8 — a 256-colour indexed PNG — which (a) posterises continuous-tone
+    // satellite imagery into visible colour banding and (b) weighs ~1.2MB per
+    // 1280px tile, so a single 10-round game downloads ~14MB and the whole
+    // image set ran to 254MB. JPEG is the right container for photography here.
+    //
+    // Note the files already on disk were fetched before this was set, so they
+    // are still png8 despite their .jpg names (`file public/satellite/...` will
+    // say so). Re-runs skip existing files, so switching them over means
+    // deleting the directory first and re-fetching it.
     const params = new URLSearchParams({
       center: `${lat},${lng}`,
       zoom: String(zoom),
       size: "640x640",
       scale: "2",
       maptype: "satellite",
+      format: "jpg",
       key: apiKey,
     });
     const url = `https://maps.googleapis.com/maps/api/staticmap?${params}`;
