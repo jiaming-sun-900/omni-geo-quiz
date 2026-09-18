@@ -250,15 +250,10 @@ West, Midwest, South, Southeast, Northeast, Non-contiguous).
 - **`src/data/usGeo.js`** — the us-atlas TopoJSON as GeoJSON: `nation` and `states`.
 
 **The `// VERIFY` tags are gone — all 28 were reviewed against their fetched images** (18
-cities, 10 airports; round 3 of the review). 26 came out clean: the coordinate matches the
-claimed place and the frame is playable. Two did not, and both are now precise comments on
-their own data line rather than a vague tag:
-
-- **Mumbai** — coordinate is right, but the committed image has a **plain white
-  missing-imagery block over its lower-left quadrant** at zoom 12. Zoom moved to 13, which
-  draws a different tile set; this one **must be re-fetched and re-checked**.
-- **KUL** — coordinate is right, but at zoom 12 the airfield filled only ~25% of the frame
-  and the Sepang circuit read as large as the airport. Zoom moved to 13.
+cities, 10 airports; round 3 of the review). 26 came out clean straight away. Two were
+defective and were **fixed by cropping the 1280px original out of git history**, with no
+API call — see "Two images are crops, not fetches" below. Every coordinate in both files
+is confirmed correct; the two problems were framing, not position.
 
 Two more were noted in `scripts/fetch-satellite.js` and deliberately **not** changed,
 because the current images are playable and a blind coordinate nudge can't be verified
@@ -297,6 +292,22 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   quota; note the old blobs stay in git history, so a fresh clone is unchanged in size even
   though the Pages deploy shrank. Future fetches return 1280px JPEGs straight from the API
   (`format=jpg` is already set), which is fine — no need to match 1024 exactly.
+- **Two images are crops, not fetches**, and a re-fetch would overwrite both:
+  `world-cities/Mumbai_India.jpg` is **928px** and `world-airports/KUL.jpg` is **800px**,
+  where everything else is 1024px. Mumbai's fetch came back with a **plain white
+  missing-imagery block over the lower-left quadrant** — all of it open sea, so cropping to
+  the right/lower part of the frame removed the hole *and* gave a better composition (the
+  peninsula now fills the frame instead of sharing it with empty ocean). KUL framed the
+  airfield at only ~25% of the frame, and a centred crop is arithmetically the same thing
+  as zooming in, so it now reads at ~50% with all three runways and the Sepang circuit
+  still in shot. Both were cut from the 1280px png8 originals recovered via
+  `git show 7467ee8^:<path>`, so no resolution was lost to the earlier 1024px pass. They
+  are below the frame's retina size and will look marginally softer on a high-DPI screen;
+  that was judged a good trade against a white hole and a 25%-of-frame airport. The zoom
+  overrides in the fetch script were still moved to 13 for both, so a future re-fetch
+  lands closer to these crops — but **check both images after any re-fetch of the
+  `world-cities` or `world-airports` targets**, because the fetched version will not be
+  the crop.
 - **The `airports` target fetches only `satellite-airports.js`.** It used to union that
   with `airports.js`, which is the *blank-map* pool and renders no imagery at all — so 18
   images (20.9 MB) were committed that no code path could ever load. They have been

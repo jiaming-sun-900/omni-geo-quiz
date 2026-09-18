@@ -10,7 +10,7 @@
 // airport reference point), not the city centroid, so the fetched image frames
 // the airfield. Every coordinate here has been checked against the fetched image
 // (round 3 of the review): each frame shows the claimed airfield, centered well
-// enough to play. The one open item is KUL — see its line below.
+// enough to play, and nothing is left open.
 //
 // imageFile is the IATA code + .jpg (HKG.jpg, LHR.jpg). IATA codes are globally
 // unique, so no disambiguating suffix is needed.
@@ -29,7 +29,7 @@ export const satelliteWorldAirports = [
   { name: "Incheon International", iata: "ICN", city: "Seoul", country: "South Korea", region: "Asia", lat: 37.4630, lng: 126.4407, imageFile: "ICN.jpg" }, // crop: island airport, water on multiple sides
   { name: "Singapore Changi", iata: "SIN", city: "Singapore", country: "Singapore", region: "Asia", lat: 1.3592, lng: 103.9894, imageFile: "SIN.jpg" },
   { name: "Suvarnabhumi", iata: "BKK", city: "Bangkok", country: "Thailand", region: "Asia", lat: 13.6900, lng: 100.7501, imageFile: "BKK.jpg" },
-  { name: "Kuala Lumpur International", iata: "KUL", city: "Kuala Lumpur", country: "Malaysia", region: "Asia", lat: 2.7456, lng: 101.7099, imageFile: "KUL.jpg" }, // coords OK; zoom was 12 and framed the airfield at ~25% of the frame — moved to 13, re-verify on next fetch
+  { name: "Kuala Lumpur International", iata: "KUL", city: "Kuala Lumpur", country: "Malaysia", region: "Asia", lat: 2.7456, lng: 101.7099, imageFile: "KUL.jpg" }, // image is an 800px crop of the 1280px original, see the Satellite Imagery notes
   { name: "Tan Son Nhat International", iata: "SGN", city: "Ho Chi Minh City", country: "Vietnam", region: "Asia", lat: 10.8188, lng: 106.6519, imageFile: "SGN.jpg" },
   { name: "Ninoy Aquino International", iata: "MNL", city: "Manila", country: "Philippines", region: "Asia", lat: 14.5086, lng: 121.0194, imageFile: "MNL.jpg" },
   { name: "Soekarno-Hatta International", iata: "CGK", city: "Jakarta", country: "Indonesia", region: "Asia", lat: -6.1256, lng: 106.6559, imageFile: "CGK.jpg" },

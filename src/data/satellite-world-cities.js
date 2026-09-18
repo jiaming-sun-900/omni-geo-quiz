@@ -9,7 +9,7 @@
 // world-city-quiz-roster.md (e.g. the Eiffel Tower, not the geocoded center of
 // Paris), so the fetched image frames a recognizable feature. Every coordinate
 // here has been checked against the fetched image (round 3 of the review): each
-// frame shows the claimed city. The one open item is Mumbai — see its line below.
+// frame shows the claimed city, and nothing is left open.
 //
 // imageFile follows the City_Country.jpg convention (spaces -> underscores); a
 // country suffix is on every entry for consistency with satellite-cities.js even
@@ -27,7 +27,7 @@ export const satelliteWorldCities = [
   { name: "Bangkok", lat: 13.7500, lng: 100.4915, country: "Thailand", region: "Asia", funFact: "Home to an ornate royal palace complex along the banks of a winding river.", imageFile: "Bangkok_Thailand.jpg" },
   { name: "Dubai", lat: 25.1124, lng: 55.1390, country: "UAE", region: "Asia", funFact: "Home to the world's tallest building and a set of artificial islands shaped like palm trees.", imageFile: "Dubai_UAE.jpg" },
   { name: "Doha", lat: 25.3690, lng: 51.5510, country: "Qatar", region: "Asia", funFact: "The capital of a Gulf nation that hosted a recent FIFA World Cup.", imageFile: "Doha_Qatar.jpg" },
-  { name: "Mumbai", lat: 18.9430, lng: 72.8230, country: "India", region: "Asia", funFact: "The center of the country's film industry, located on a peninsula along the coast.", imageFile: "Mumbai_India.jpg" }, // coords OK; committed image has a missing-imagery white block over its lower-left quadrant at zoom 12 — moved to 13, MUST re-fetch and re-check
+  { name: "Mumbai", lat: 18.9430, lng: 72.8230, country: "India", region: "Asia", funFact: "The center of the country's film industry, located on a peninsula along the coast.", imageFile: "Mumbai_India.jpg" }, // image is a 928px crop of the 1280px original, see the Satellite Imagery notes
   { name: "Agra", lat: 27.1751, lng: 78.0421, country: "India", region: "Asia", funFact: "Home to a white marble mausoleum built for a deceased queen, often called one of the new seven wonders of the world.", imageFile: "Agra_India.jpg" },
   { name: "Istanbul", lat: 41.0250, lng: 28.9740, country: "Turkey", region: "Asia", funFact: "One of the few cities in the world that sits on two continents at once.", imageFile: "Istanbul_Turkey.jpg" },
   { name: "Hanoi", lat: 21.0287, lng: 105.8524, country: "Vietnam", region: "Asia", funFact: "This capital's old quarter wraps around a lake said to be home to a legendary giant turtle.", imageFile: "Hanoi_Vietnam.jpg" },
