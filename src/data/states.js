@@ -60,7 +60,13 @@ export function matchesState(guess, stateName) {
   const stripped = guess.toLowerCase().replace(/[^a-z]/g, "");
   const abbr = stateAbbreviations[stateName];
   if (abbr && stripped === abbr.toLowerCase()) return true;
-  return fuzzyMatch(guess, stateName);
+  // An exact abbreviation for a DIFFERENT state is a wrong answer, not a typo:
+  // without this, "ND" fell through to the fuzzy matcher and scored for South
+  // Dakota. The full-name equivalent is handled by passing the pool below.
+  if (stripped.length === 2 && Object.values(stateAbbreviations).some((x) => x.toLowerCase() === stripped)) {
+    return false;
+  }
+  return fuzzyMatch(guess, stateName, allStateNames);
 }
 
 // Names (or abbreviations) that START with the query rank ahead of those that

@@ -24,7 +24,10 @@ export const airports = [
   { code: "MIA", name: "Miami International", city: "Miami", lat: 25.7959, lng: -80.2870, state: "Florida", hubs: ["American Airlines"] },
   { code: "PHL", name: "Philadelphia International", city: "Philadelphia", lat: 39.8744, lng: -75.2424, state: "Pennsylvania", hubs: ["American Airlines"] },
   { code: "PHX", name: "Phoenix Sky Harbor International", city: "Phoenix", lat: 33.4373, lng: -112.0078, state: "Arizona", hubs: ["American Airlines", "Southwest Airlines (focus city)"] },
-  { code: "DCA", name: "Ronald Reagan Washington National", city: "Washington", lat: 38.8521, lng: -77.0377, state: "Virginia", hubs: ["American Airlines"] },
+  // lng is nudged west of the Potomac on purpose: the airport's own centroid
+  // (-77.0377) falls inside the District of Columbia polygon, which contradicted
+  // this record's `state` and the level-2 hint built from it.
+  { code: "DCA", name: "Ronald Reagan Washington National", city: "Washington", lat: 38.8521, lng: -77.0402, state: "Virginia", hubs: ["American Airlines"] },
   // Alaska Airlines
   { code: "ANC", name: "Ted Stevens Anchorage International", city: "Anchorage", lat: 61.1743, lng: -149.9963, state: "Alaska", hubs: ["Alaska Airlines"] },
   { code: "PDX", name: "Portland International", city: "Portland", lat: 45.5898, lng: -122.5951, state: "Oregon", hubs: ["Alaska Airlines"] },
@@ -105,11 +108,35 @@ export function getAirportSuggestions(query, limit = 10) {
   }));
 }
 
-// Accept the exact IATA code, or the city name / full airport name with the
-// shared fuzzy matcher (case-insensitive, typo tolerant).
+// Every valid answer of each kind, handed to the fuzzy matcher so it can reject
+// a guess that exactly names a different airport instead of treating it as a
+// typo of this one.
+const AIRPORT_ANSWERS = [...airports.map((a) => a.name), ...airports.map((a) => a.code)];
+const AIRPORT_CITIES = [...new Set(airports.map((a) => a.city))];
+
+// Cities with more than one airport in the pool (Chicago ORD/MDW, Houston
+// IAH/HOU, Washington IAD/DCA, New York JFK/LGA, Dallas DFW/DAL). The city name
+// alone cannot identify which dot is on the map, so it is not accepted for
+// these — the player gives the IATA code or the airport name, both of which the
+// autocomplete offers. Derived from the data so it stays correct if the roster
+// changes. Same rule the World Airport Quiz already applies.
+const AMBIGUOUS_CITIES = (() => {
+  const counts = new Map();
+  for (const a of airports) counts.set(a.city, (counts.get(a.city) || 0) + 1);
+  return new Set([...counts].filter(([, n]) => n > 1).map(([city]) => city));
+})();
+
+// Accept the exact IATA code, the full airport name, or — when it identifies a
+// single airport — the city name, both names via the shared fuzzy matcher
+// (case-insensitive, typo tolerant).
 export function matchAirport(guess, airport) {
   if (guess.trim().toLowerCase() === airport.code.toLowerCase()) return true;
-  if (fuzzyMatch(guess, airport.city)) return true;
-  if (fuzzyMatch(guess, airport.name)) return true;
+  if (fuzzyMatch(guess, airport.name, AIRPORT_ANSWERS)) return true;
+  if (
+    !AMBIGUOUS_CITIES.has(airport.city) &&
+    fuzzyMatch(guess, airport.city, AIRPORT_CITIES)
+  ) {
+    return true;
+  }
   return false;
 }

@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 // layout of any other element (no reflow / no shift). Green for correct, red for
 // incorrect. It fades/scales in on mount and stays until the parent unmounts it
 // (when the user presses Enter or clicks to advance). Inline styles keep the
-// shared stylesheet untouched.
+// shared stylesheet almost untouched — only the height cap needs a class, since
+// it carries a vh fallback for engines without dvh.
 export default function FeedbackBubble({ correct, message }) {
   const [shown, setShown] = useState(false);
 
@@ -18,6 +19,10 @@ export default function FeedbackBubble({ correct, message }) {
     <div
       role="status"
       aria-live="polite"
+      // The height cap is the one value that cannot live inline: it needs a vh
+      // fallback for engines without dvh, and two inline declarations of the
+      // same property can't coexist. See .feedback-bubble in App.css.
+      className="feedback-bubble"
       style={{
         position: "fixed",
         top: "50%",
@@ -29,7 +34,6 @@ export default function FeedbackBubble({ correct, message }) {
         // Never wider than the screen, and never taller than it either — a long
         // reveal line on a small phone wraps instead of bleeding off-screen.
         maxWidth: "min(82vw, 34rem)",
-        maxHeight: "80dvh",
         overflowY: "auto",
         padding: "clamp(1.1rem, 4.5vw, 2.25rem) clamp(1.2rem, 5vw, 2.5rem)",
         borderRadius: "16px",

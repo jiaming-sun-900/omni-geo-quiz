@@ -28,9 +28,12 @@ function wikiTitleForState(name) {
 // covers Maryland and Virginia and the three are indistinguishable.
 const QUIZ_POOL = states.filter((s) => s.id !== "11");
 
-function pickRound(usedIds) {
-  const available = QUIZ_POOL.filter((s) => !usedIds.has(s.id));
-  const pool = available.length > 0 ? available : QUIZ_POOL;
+// `excludeId` is the state currently on screen. Shuffle passes it so a reshuffle
+// can't hand back the state you are already looking at.
+function pickRound(usedIds, excludeId = null) {
+  const selectable = QUIZ_POOL.filter((s) => s.id !== excludeId);
+  const available = selectable.filter((s) => !usedIds.has(s.id));
+  const pool = available.length > 0 ? available : selectable;
   const state = pool[Math.floor(Math.random() * pool.length)];
   const point = getRandomPointInState(state);
   return { state, point };
@@ -96,10 +99,12 @@ function Game({
   };
 
   // Generate a new random target without advancing the round or changing the
-  // score. Clears feedback, and the input via the bumped shuffle key.
+  // score. The input clears via the bumped shuffle key. Feedback is deliberately
+  // NOT cleared here — and the button is disabled while it is up. Clearing it
+  // re-enabled the input on an already-scored round, so answering again scored
+  // again without the round advancing: a 27/10 "Perfect score!" was reachable.
   const handleShuffle = () => {
-    setCurrent(pickRound(usedIds.current));
-    setFeedback(null);
+    setCurrent(pickRound(usedIds.current, current.state.id));
     setShuffleId((n) => n + 1);
   };
 
@@ -110,9 +115,9 @@ function Game({
     <div className="quiz-container state-quiz">
       <div className="state-quiz-header">
         <div className="sq-right">
-          <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
-          <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart" onClick={handleShuffle}>Shuffle</button>
+          <div className="sq-box sq-round" role="status">Round {round}/{TOTAL_ROUNDS}</div>
+          <div className="sq-box sq-score" role="status">Score: {score}</div>
+          <button className="sq-box sq-restart" onClick={handleShuffle} disabled={!!feedback}>Shuffle</button>
         </div>
       </div>
 
@@ -141,6 +146,7 @@ function Game({
           <button
             type="button"
             role="switch"
+            aria-label="Rivers"
             aria-checked={showRivers}
             className={`push-toggle ${showRivers ? "on" : ""}`}
             onClick={() => setShowRivers((v) => !v)}
@@ -153,6 +159,7 @@ function Game({
           <button
             type="button"
             role="switch"
+            aria-label="Mountains"
             aria-checked={showMountains}
             className={`push-toggle ${showMountains ? "on" : ""}`}
             onClick={() => setShowMountains((v) => !v)}
@@ -165,6 +172,7 @@ function Game({
           <button
             type="button"
             role="switch"
+            aria-label="State Borders"
             aria-checked={showBorders}
             className={`push-toggle ${showBorders ? "on" : ""}`}
             onClick={() => setShowBorders((v) => !v)}
@@ -176,7 +184,13 @@ function Game({
 
       <div className="quiz-controls">
         <p className="prompt">Which state is the red dot in?</p>
-        <StateGuessInput key={shuffleId} onSubmit={handleGuess} disabled={!!feedback} />
+        {/* Keyed on round + shuffle so a new target remounts the field, which is
+            what clears it (see StateGuessInput). */}
+        <StateGuessInput
+          key={`${round}-${shuffleId}`}
+          onSubmit={handleGuess}
+          disabled={!!feedback}
+        />
       </div>
 
       {feedback && (

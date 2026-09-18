@@ -63,6 +63,10 @@ export const cities = [
   { name: "Honolulu", lat: 21.31, lng: -157.86, state: "Hawaii" },
 ];
 
+// Every valid answer, handed to the fuzzy matcher so a guess that exactly names
+// a different city is rejected rather than treated as a typo of this one.
+export const allCityNames = cities.map((c) => c.name);
+
 // Common abbreviations shown beside suggestions and matched in the typeahead.
 export const cityAbbreviations = {
   "Washington DC": "DC",

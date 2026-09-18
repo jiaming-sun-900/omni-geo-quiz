@@ -36,28 +36,33 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
       : computeDims()
   );
 
-  // Re-measure whenever the wrapper's box changes. A ResizeObserver catches
-  // viewport resizes, device rotation, mobile URL-bar collapse and layout
-  // shifts from sibling chrome alike. The wrapper is `flex: 1; overflow:
-  // hidden`, so its size is decided by the layout and never by the SVG we put
-  // inside it — no measure/resize feedback loop.
+  // Re-measure whenever the wrapper's box changes. A ResizeObserver is the only
+  // subscription needed: it fires for viewport resizes, device rotation, mobile
+  // URL-bar collapse and layout shifts from sibling chrome alike, because all of
+  // those change this element's box. There used to be `resize` and
+  // `orientationchange` listeners alongside it, which only meant one gesture
+  // triggered the observer and both listeners — two or three full rebuilds of
+  // the map per event, which is what made a window drag stutter.
+  //
+  // The wrapper is `flex: 1; overflow: hidden`, so its size is decided by the
+  // layout and never by the SVG we put inside it — no measure/resize loop.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const measure = () => {
       const rect = el.getBoundingClientRect();
-      setDimensions(computeDims({ width: rect.width, height: rect.height }));
+      const next = computeDims({ width: rect.width, height: rect.height });
+      // computeDims always returns a fresh object, so without this the state
+      // update is never a no-op: every measurement re-ran the draw effect
+      // below, which clears the SVG and re-projects all 50 states.
+      setDimensions((prev) =>
+        prev.width === next.width && prev.height === next.height ? prev : next
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
-    window.addEventListener("resize", measure);
-    window.addEventListener("orientationchange", measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("orientationchange", measure);
-    };
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -67,6 +72,14 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
 
     const projection = geoAlbersUsa().fitSize([w, h], nation);
     const path = geoPath().projection(projection);
+
+    // State borders scale inversely with the rendered width, the mirror of the
+    // dot's rule below. A flat 0.5px is a half CSS pixel: on a phone map it
+    // antialiases into near-nothing, so flipping "State Borders" on looked
+    // broken. The divisor pins the desktop end at 0.6px — where it has always
+    // effectively been — and only small maps get the heavier 1.2px line, which
+    // is the least that reads crisply at a 390px map width.
+    const borderWidth = Math.max(0.6, Math.min(700 / w, 1.2));
 
     // Nation fill — white base under continent + AK/HI insets
     svg
@@ -84,8 +97,10 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
       .attr("class", "state")
       .attr("d", path)
       .attr("fill", (d) => (d.id === revealedStateId ? "#e8f4e8" : "#fff"))
-      .attr("stroke", showBorders ? "#c0c0c0" : "#fff")
-      .attr("stroke-width", 0.5);
+      // #8c93a0 clears the 3:1 non-text contrast floor against the white fill
+      // (the old #c0c0c0 was 1.82:1). Still a quiet hairline, not a graphic.
+      .attr("stroke", showBorders ? "#8c93a0" : "#fff")
+      .attr("stroke-width", showBorders ? borderWidth : 0.5);
 
     // National border outline (drawn last so it sits on top of state fills)
     svg
@@ -112,8 +127,12 @@ export default function USMap({ dotPosition, revealedStateId, showRivers = false
         .join("path")
         .attr("class", "mountain")
         .attr("d", path)
-        .attr("fill", "#C8D9B8")
-        .attr("stroke", "none")
+        // Darkened from #C8D9B8 (1.49:1 against the white states — the ranges
+        // were barely there) and given an outline, so the shapes still read as
+        // ranges once the map is phone-sized and each one is only a few px wide.
+        .attr("fill", "#A9C49A")
+        .attr("stroke", "#6F8F5C")
+        .attr("stroke-width", borderWidth)
         .attr("clip-path", "url(#us-clip)");
     }
 

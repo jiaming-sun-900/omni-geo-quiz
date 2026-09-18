@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   background: #FAF7F4;
-  color: #777;
+  color: #5F5F6B;
   font-size: 1.1rem;
 }
 
@@ -15,7 +15,6 @@
   flex: 1;
   display: flex;
   flex-direction: row;
-  align-items: center;
   width: 100%;
   height: 100%;
   padding: 2rem calc(2rem + var(--safe-right)) calc(2rem + var(--safe-bottom))
@@ -714,6 +713,21 @@
   max-width: 600px;
 }
 
+/* The answer bubble is otherwise styled inline in FeedbackBubble.jsx; only its
+   height cap lives here, because it needs a vh fallback for engines without dvh
+   and inline styles cannot hold two declarations of the same property. Base
+   value first, modern value in @supports — Lightning CSS would drop the earlier
+   of two stacked declarations. */
+.feedback-bubble {
+  max-height: 80vh;
+}
+
+@supports (max-height: 80dvh) {
+  .feedback-bubble {
+    max-height: 80dvh;
+  }
+}
+
 /* Anchor for the floating hint bubble. */
 .hint-wrap {
   position: relative;
@@ -832,7 +846,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: #888;
+  color: #6E6E7A;
   margin-left: 0.75rem;
 }
 
@@ -1044,7 +1058,7 @@
   font-family: "Courier New", Courier, monospace;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #888;
+  color: #6E6E7A;
 }
 
 .review-list {
@@ -1091,7 +1105,7 @@
   font-family: "Courier New", Courier, monospace;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #888;
+  color: #6E6E7A;
   text-align: right;
 }
 
@@ -1323,9 +1337,15 @@ button.sq-box:hover {
   transition: none;
 }
 
+/* ON lights the whole button up in the signature orange with near-black text
+   (5.73:1). It used to be orange text on a grey press state, which is 1.96:1 —
+   unreadable — and signalled ON with hue alone.
+   Filling the button also flips its luminance (0.73 raised -> 0.27 lit), so the
+   two states differ by 2.4:1 in greyscale: ON is still obvious with no colour
+   perception at all, on top of the bevel and the literal ON/OFF label. */
 .push-toggle.on {
-  color: #FF4F00;
-  background: #cfc7b6;
+  color: #111;
+  background: #FF4F00;
   /* Pressed-in bevel — dark top/left, light bottom/right */
   box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.32),
     inset -2px -2px 0 rgba(255, 255, 255, 0.5);
@@ -1372,17 +1392,21 @@ button.sq-box:hover {
 }
 
 .guess-form .hint-btn.maxed {
-  color: #888;
+  color: #6E6E7A;
 }
 
-/* Submit button: black "Submit" when empty, signature orange once the
-   user starts typing (enabled). Scoped so the toggles are unaffected. */
+/* Submit button: black "Submit" on the raised grey when empty, lit up in the
+   signature orange once the user starts typing (enabled). Scoped so the toggles
+   are unaffected. Same reason as .push-toggle.on for filling rather than just
+   recolouring the text: orange text on the raised grey is 2.43:1, whereas
+   near-black on the orange fill is 5.73:1. */
 .guess-form .push-toggle {
   opacity: 1;
 }
 
 .guess-form .push-toggle:not(:disabled) {
-  color: #FF4F00;
+  color: #111;
+  background: #FF4F00;
 }
 
 /* Push the prompt/input group slightly down for breathing room from the map */
@@ -1548,6 +1572,9 @@ button.sq-box:hover {
     /* Nothing floats over the content any more, so no inset is needed. */
     --map-inset: 0rem;
     --controls-inset: 0rem;
+    /* One source of truth for the Home square's size: it is both the button's
+       own width and the gap the header reserves for it below. */
+    --sq-home-size: 2.9rem;
     padding-top: calc(0.75rem + var(--safe-top));
   }
 
@@ -1566,15 +1593,23 @@ button.sq-box:hover {
 
   /* Top bar: the header stays in flow and holds Round / Score / Shuffle on the
      right. The Home button is pinned to the container's top-left, which is the
-     empty half of that same row, so the two read as one bar. */
+     empty half of that same row, so the two read as one bar.
+     Home is absolutely positioned, so it contributes no width to the row —
+     without the reserved padding the three right-hand boxes (~325px at 375px
+     wide) slid straight underneath it. The padding is derived from the button's
+     own size rather than hand-tuned, and .sq-right may wrap as a last resort so
+     a long label can never push a box off-screen instead. */
   .state-quiz-header {
     justify-content: flex-end;
-    min-height: 2.9rem;
+    min-height: var(--sq-home-size);
+    padding-left: calc(var(--sq-home-size) + 0.45rem);
   }
 
   .sq-right {
     position: static;
     flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: 0.45rem;
     min-width: 0;
@@ -1601,7 +1636,7 @@ button.sq-box:hover {
   }
 
   .sq-home {
-    width: 2.9rem;
+    width: var(--sq-home-size);
     padding: 0;
   }
 
@@ -1846,16 +1881,19 @@ button.sq-box:hover {
   }
 }
 
-/* ---------- Tier 4: small & landscape phones ---------- */
-@media (max-width: 400px) {
+/* Phone-width top bar: Round + Score + Shuffle/New Image plus the reserved Home
+   square do not fit one line at the tier-2 sizes once the viewport is narrower
+   than ~430px, and .sq-right would wrap to a second row. Trimming the type and
+   padding keeps the whole bar on one line down to 360px. */
+@media (max-width: 430px) {
+  .state-quiz {
+    --sq-home-size: 2.6rem;
+  }
+
   .sq-box {
     height: 2.6rem;
     padding: 0 0.5rem;
-    font-size: 0.85rem;
-  }
-
-  .sq-home {
-    width: 2.6rem;
+    font-size: 0.8rem;
   }
 
   .sq-emoji {
@@ -1864,6 +1902,14 @@ button.sq-box:hover {
 
   .sq-right {
     gap: 0.35rem;
+  }
+}
+
+/* ---------- Tier 4: small & landscape phones ---------- */
+@media (max-width: 400px) {
+  .sq-box {
+    padding: 0 0.4rem;
+    font-size: 0.75rem;
   }
 
   .state-quiz .prompt {
@@ -1876,8 +1922,15 @@ button.sq-box:hover {
 }
 
 /* Short phones (iPhone SE and friends): trim the home screen's vertical rhythm
-   so the globe, title and all five menu entries fit without scrolling. */
-@media (max-width: 600px) and (max-height: 800px) {
+   so the globe, title and all five menu entries fit without scrolling.
+   The second branch is what keeps this disjoint from the landscape-phone tier
+   below: together the two branches mean "<=600 wide and <=800 tall, but not the
+   short landscape case", which the landscape tier owns outright. Written as two
+   queries because a media query cannot express that OR in one. Portrait here
+   includes square, and the landscape tier is strictly width > height, so the
+   two partition the space with no gap and no overlap. */
+@media (max-width: 600px) and (max-height: 800px) and (min-height: 521px),
+  (max-width: 600px) and (max-height: 520px) and (orientation: portrait) {
   .home-screen {
     gap: 0.9rem;
   }
@@ -1908,8 +1961,13 @@ button.sq-box:hover {
 }
 
 /* The shortest phones still in use (iPhone SE / 8, 375x667): one more notch
-   tighter so the globe, title and all five entries fit without scrolling. */
-@media (max-width: 600px) and (max-height: 700px) {
+   tighter so the globe, title and all five entries fit without scrolling.
+   Deliberately nested inside the <=800px tier above rather than disjoint from
+   it — it only overrides the handful of values that need one more notch, and
+   inherits the rest. Its guards carry the same "not short landscape" split, so
+   like that tier it stays disjoint from the landscape tier below. */
+@media (max-width: 600px) and (max-height: 700px) and (min-height: 521px),
+  (max-width: 600px) and (max-height: 520px) and (orientation: portrait) {
   .home-screen {
     gap: 0.7rem;
   }
@@ -1942,7 +2000,11 @@ button.sq-box:hover {
 }
 
 /* Landscape phones: width is fine, height is not. Trim every vertical margin so
-   the map/image still has something left to occupy. */
+   the map/image still has something left to occupy.
+   This tier owns every short landscape viewport outright — the two phone tiers
+   above exclude it by guard, so it no longer depends on being last in the file
+   to win. Keep it that way: it sets the same properties they do, with different
+   values. */
 @media (max-height: 520px) and (orientation: landscape) {
   .home-screen {
     flex-direction: row;
@@ -2059,7 +2121,13 @@ button.sq-box:hover {
    laptop in a split view. The width/height guards make each short-window tier
    disjoint from the phone and landscape tiers, which already shrink the same
    properties by more — without them, whichever block came last in the file
-   would win and the layout would grow again. */
+   would win and the layout would grow again.
+   The live partition of the home screen's height tiers, all four now mutually
+   disjoint by guard rather than by file order:
+     short phone       <=600w, <=800h/<=700h, and (>=521h or portrait)
+     landscape phone   <=520h, landscape
+     short stacked     601-900w, 521-720h
+     short two-column  >=901w,  521-720h */
 @media (min-width: 901px) and (min-height: 521px) and (max-height: 720px) {
   .home-title {
     font-size: 2.2rem;
@@ -2139,6 +2207,37 @@ button.sq-box:hover {
   }
 }
 
+/* Narrow desktop windows still wide enough to keep the floating chrome (so tier
+   2 has not kicked in): --controls-inset reserves 15rem a side to keep the
+   centered form clear of the toggle panel, which at 1025px leaves only ~82px for
+   the text field once Hint and Submit have taken their width. Shrinking the
+   inset instead would let the form slide under the toggle panel, so borrow the
+   phone tier's layout — the field gets its own row above Hint + Submit and so
+   gets the full ~398px. The map absorbs the extra row: .us-map-wrap is
+   `flex: 1; min-height: 0`, so it shrinks rather than overflowing.
+   Guarded with min-height so it cannot overlap tier 2's short-viewport half. */
+@media (min-width: 1025px) and (max-width: 1220px) and (min-height: 621px) {
+  .guess-form {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .guess-form .autocomplete-wrapper {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .guess-form .hint-wrap {
+    order: 2;
+    flex: 0 1 auto;
+  }
+
+  .guess-form > [type="submit"] {
+    order: 3;
+    flex: 0 1 auto;
+  }
+}
+
 /* Very short viewports: the fixed "Meet the Dev" link sits on top of the title
    in the right-hand column, so move it over the globe column, which has slack
    at the top. */
@@ -2166,13 +2265,20 @@ button.sq-box:hover {
     padding: 0.4rem 0.6rem;
   }
 
-  /* The review links are text, not buttons, so they need padding rather than a
-     min-height to become finger-sized without changing how they look. */
+  /* The review links are text, not buttons, so they get padding rather than a
+     min-height to become finger-sized without changing how they look. The old
+     0.35rem/0.3rem left them ~28px tall — below even the 34px the toggles above
+     get. inline-flex is what makes the block padding count toward the hit box:
+     on an inline element it paints but does not grow the line, so the target
+     stayed 28px however much padding it was given. */
   .review-links {
     gap: 0.25rem 0.9rem;
   }
 
   .review-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
     padding: 0.35rem 0 0.3rem;
   }
 

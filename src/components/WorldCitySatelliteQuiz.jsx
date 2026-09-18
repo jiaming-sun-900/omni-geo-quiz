@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import AirportGuessInput from "./AirportGuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
+import SatelliteImage from "./SatelliteImage";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 import { satelliteWorldCities } from "../data/satellite-world-cities";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
@@ -25,12 +26,14 @@ const CITY_ABBR = {
 // of the common abbreviations above. Validation is on the city name only, not the
 // country. The autocomplete fills "City, Country", so a trailing ", Country" is
 // stripped before matching.
+const ALL_CITY_NAMES = satelliteWorldCities.map((c) => c.name);
+
 function matchCity(guess, city) {
   const raw = guess.trim();
   const cityPart = raw.includes(",") ? raw.slice(0, raw.indexOf(",")).trim() : raw;
   const abbr = CITY_ABBR[city.name];
   if (abbr && cityPart.toLowerCase() === abbr.toLowerCase()) return true;
-  if (fuzzyMatch(cityPart, city.name)) return true;
+  if (fuzzyMatch(cityPart, city.name, ALL_CITY_NAMES)) return true;
   return false;
 }
 
@@ -184,9 +187,9 @@ function Game({ onHome, onFinish }) {
     <div className="quiz-container state-quiz">
       <div className="state-quiz-header">
         <div className="sq-right">
-          <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
-          <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart" onClick={handleNewImage}>New Image</button>
+          <div className="sq-box sq-round" role="status">Round {round}/{TOTAL_ROUNDS}</div>
+          <div className="sq-box sq-score" role="status">Score: {score}</div>
+          <button className="sq-box sq-restart" onClick={handleNewImage} disabled={!!feedback}>New Image</button>
         </div>
       </div>
 
@@ -207,11 +210,10 @@ function Game({ onHome, onFinish }) {
           on short or narrow screens. */}
       <div className="sat-stage">
         <div className="sat-frame">
-          <img
+          <SatelliteImage
             key={c.imageFile}
             src={`${IMG_BASE}${c.imageFile}`}
             alt="Satellite view of a city"
-            className="sat-image"
           />
           {/* North compass indicator — satellite images are north-up. */}
           <svg className="sat-compass" viewBox="0 0 36 36" aria-hidden="true">
@@ -228,7 +230,7 @@ function Game({ onHome, onFinish }) {
             Which city is shown in the satellite image?
           </p>
           <AirportGuessInput
-            key={current.index}
+            key={`${round}-${current.index}`}
             onSubmit={handleGuess}
             disabled={!!feedback}
             onHint={handleHint}

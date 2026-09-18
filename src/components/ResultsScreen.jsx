@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { wikipediaUrl, satelliteMapUrl } from "../utils/reviewLinks";
 
 // One reviewed round. `item` is built by each quiz's Game component (see
@@ -32,19 +33,13 @@ function ReviewRow({ item }) {
           </span>
         )}
         <span className="review-links">
-          <a
-            href={wikipediaUrl(item.wiki)}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <a href={wikipediaUrl(item.wiki)} target="_blank" rel="noreferrer">
             📖 Wikipedia
           </a>
           <a
             href={satelliteMapUrl(item.lat, item.lng, item.zoom)}
             target="_blank"
             rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
           >
             🗺️ Map
           </a>
@@ -61,25 +56,41 @@ export default function ResultsScreen({
   onPlayAgain,
   onHome,
 }) {
-  const pct = Math.round((score / total) * 100);
+  // Scored out of the rounds actually reviewed, so the headline percentage can
+  // never disagree with the list below it; `total` is only the fallback for a
+  // caller that passes no review.
+  const answered = review.length > 0 ? review.length : total;
+  const pct = answered > 0 ? Math.round((score / answered) * 100) : 0;
 
   let message;
-  if (pct === 100) message = "Perfect score!";
+  if (pct >= 100) message = "Perfect score!";
   else if (pct >= 80) message = "Great job!";
   else if (pct >= 50) message = "Not bad!";
   else message = "Keep practicing!";
 
   const missed = review.filter((r) => !r.correct).length;
   // Misses first (that's what the review is for), each group still in round
-  // order — Array.prototype.sort is stable, so the slice keeps its order.
-  const ordered = [...review].sort(
-    (a, b) => Number(a.correct) - Number(b.correct)
-  );
+  // order — Array.prototype.sort is stable, and map() already copied, so the
+  // caller's array is untouched. The original index rides along to key the
+  // rows: `round` is not guaranteed unique, and duplicate keys drop a row.
+  const ordered = review
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => Number(a.item.correct) - Number(b.item.correct));
+
+  // The input the player was typing into unmounts with the game, which drops
+  // focus to <body> and leaves a screen reader with no indication the round
+  // sequence ended. Sending focus to the heading announces the new screen.
+  const headingRef = useRef(null);
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
 
   return (
     <div className="results-screen">
       <div className="results-summary">
-        <h2>Results</h2>
+        <h2 ref={headingRef} tabIndex={-1}>
+          Results
+        </h2>
         <div className="score-display">
           <span className="score-big">{score}/{total}</span>
         </div>
@@ -115,8 +126,8 @@ export default function ResultsScreen({
             </span>
           </div>
           <ul className="review-list">
-            {ordered.map((item) => (
-              <ReviewRow key={item.round} item={item} />
+            {ordered.map(({ item, index }) => (
+              <ReviewRow key={index} item={item} />
             ))}
           </ul>
         </div>

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import AirportGuessInput from "./AirportGuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
+import SatelliteImage from "./SatelliteImage";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 import { airportWikiQuery } from "../utils/reviewLinks";
 import { satelliteAirports } from "../data/satellite-airports";
@@ -51,12 +52,38 @@ function regionForState(stateName) {
   return REGION_BY_ABBR[abbr] || null;
 }
 
-// Accept the exact IATA code, or the city / full airport name via the shared
-// fuzzy matcher (case-insensitive, typo tolerant).
+// Every valid answer of each kind, handed to the fuzzy matcher so a guess that
+// exactly names a different airport is rejected rather than treated as a typo of
+// this one (the shared "International" suffix otherwise makes unrelated names
+// look one small edit apart).
+const AIRPORT_ANSWERS = [
+  ...satelliteAirports.map((a) => a.name),
+  ...satelliteAirports.map((a) => a.code),
+];
+const AIRPORT_CITIES = [...new Set(satelliteAirports.map((a) => a.city))];
+
+// Cities with more than one airport in this pool. The city name alone cannot
+// identify which one is shown, so it is not accepted for them — the player gives
+// the IATA code or the airport name. Derived from the data, so it is empty when
+// the pool has no such pair. Same rule as the World Airport Quiz.
+const AMBIGUOUS_CITIES = (() => {
+  const counts = new Map();
+  for (const a of satelliteAirports) counts.set(a.city, (counts.get(a.city) || 0) + 1);
+  return new Set([...counts].filter(([, n]) => n > 1).map(([city]) => city));
+})();
+
+// Accept the exact IATA code, the full airport name, or — when it identifies a
+// single airport — the city, both names via the shared fuzzy matcher
+// (case-insensitive, typo tolerant).
 function matchAirport(guess, airport) {
   if (guess.trim().toLowerCase() === airport.code.toLowerCase()) return true;
-  if (fuzzyMatch(guess, airport.city)) return true;
-  if (fuzzyMatch(guess, airport.name)) return true;
+  if (fuzzyMatch(guess, airport.name, AIRPORT_ANSWERS)) return true;
+  if (
+    !AMBIGUOUS_CITIES.has(airport.city) &&
+    fuzzyMatch(guess, airport.city, AIRPORT_CITIES)
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -202,9 +229,9 @@ function Game({ onHome, onFinish }) {
     <div className="quiz-container state-quiz">
       <div className="state-quiz-header">
         <div className="sq-right">
-          <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
-          <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart" onClick={handleNewImage}>New Image</button>
+          <div className="sq-box sq-round" role="status">Round {round}/{TOTAL_ROUNDS}</div>
+          <div className="sq-box sq-score" role="status">Score: {score}</div>
+          <button className="sq-box sq-restart" onClick={handleNewImage} disabled={!!feedback}>New Image</button>
         </div>
       </div>
 
@@ -225,11 +252,10 @@ function Game({ onHome, onFinish }) {
           on short or narrow screens. */}
       <div className="sat-stage">
         <div className="sat-frame">
-          <img
+          <SatelliteImage
             key={a.code}
             src={`${IMG_BASE}${a.code}.jpg`}
             alt="Satellite view of an airport"
-            className="sat-image"
           />
           {/* North compass indicator — satellite images are north-up. */}
           <svg className="sat-compass" viewBox="0 0 36 36" aria-hidden="true">
@@ -244,7 +270,7 @@ function Game({ onHome, onFinish }) {
         <div className="quiz-controls">
           <p className="prompt" style={{ fontWeight: 700 }}>Which airport is shown?</p>
           <AirportGuessInput
-            key={current.index}
+            key={`${round}-${current.index}`}
             onSubmit={handleGuess}
             disabled={!!feedback}
             onHint={handleHint}

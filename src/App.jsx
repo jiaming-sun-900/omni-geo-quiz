@@ -2,10 +2,10 @@ import { useState, lazy, Suspense } from "react";
 import HomeScreen from "./components/HomeScreen";
 import "./App.css";
 
-// The quiz modes are code-split. Only the home screen (and the globe with it) is
-// in the initial bundle; each quiz's own dependencies — d3-geo, topojson and the
-// us-atlas TopoJSON for the map modes — now load when that mode is first opened
-// instead of being downloaded by every visitor up front.
+// Every quiz mode is code-split, and so is the globe (lazily imported inside
+// HomeScreen). The entry bundle is therefore just the shell and the menu: the
+// us-atlas TopoJSON behind the map modes and the Three.js/d3-geo stack behind
+// the globe each load only when something actually asks for them.
 const StateQuiz = lazy(() => import("./components/StateQuiz"));
 const CityQuiz = lazy(() => import("./components/CityQuiz"));
 const AirportQuiz = lazy(() => import("./components/AirportQuiz"));

@@ -9,6 +9,11 @@
 const TITLE_OVERRIDES = {
   "Washington DC, District of Columbia": "Washington, D.C.",
   "John Wayne Orange County Airport": "John Wayne-Orange County Airport",
+  // The World City Quiz passes a bare city name, which Wikipedia titles the
+  // article for in 52 of 54 cases. These two are disambiguation pages, so the
+  // review link would have landed on a list of unrelated Cartagenas.
+  Cartagena: "Cartagena, Colombia",
+  "Gold Coast": "Gold Coast, Queensland",
 };
 
 // Special:Search with go=Go jumps straight to the article when the title

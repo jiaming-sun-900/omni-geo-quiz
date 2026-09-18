@@ -6,6 +6,11 @@ import { isTouchDevice } from "../utils/isTouch";
 // but without aria-expanded / aria-controls / aria-activedescendant on the input
 // a screen reader was never told the suggestions existed, and arrow-key movement
 // through them was silent.
+//
+// The field is cleared by the PARENT remounting this component on a new round
+// (its `key` carries the round), not by an effect watching `disabled`. Mount
+// state is already empty, and `autoFocus` refocuses — skipped on touch devices
+// so the on-screen keyboard doesn't cover the map before you've seen it.
 export default function GuessInput({ onSubmit, disabled }) {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -13,17 +18,6 @@ export default function GuessInput({ onSubmit, disabled }) {
   const listId = useId();
   const inputRef = useRef();
   const wrapperRef = useRef();
-
-  // Clear the field when a new round starts. Refocusing is skipped on touch
-  // devices so the on-screen keyboard doesn't cover the map/image unasked.
-  useEffect(() => {
-    if (!disabled) {
-      setValue("");
-      setOpen(false);
-      setHighlighted(-1);
-      if (!isTouchDevice()) inputRef.current?.focus();
-    }
-  }, [disabled]);
 
   useEffect(() => {
     const onDocMouseDown = (e) => {

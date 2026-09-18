@@ -1,9 +1,8 @@
 // Downloads satellite images using the Google Maps Static API.
 //
-// Three targets:
-//   airports (default) — every airport in src/data/airports.js and
-//     src/data/satellite-airports.js (deduplicated by IATA code), saved to
-//     public/satellite/airports/{CODE}.jpg.
+// Four targets:
+//   airports (default) — every airport in src/data/satellite-airports.js, saved
+//     to public/satellite/airports/{CODE}.jpg.
 //   cities — every city in src/data/satellite-cities.js, saved to
 //     public/satellite/cities/{CITYNAME}.jpg where CITYNAME is the city name
 //     with spaces replaced by underscores (e.g. New_York.jpg).
@@ -40,19 +39,11 @@ async function loadArray(fileName, exportName) {
   return new Function(`return ${match[1].replace(/;$/, "")}`)();
 }
 
-// Merge both airport sources, keeping the first entry seen for each IATA code.
+// Only the satellite pool is fetched. airports.js is the blank-map quiz's pool,
+// which renders no imagery, so unioning the two sources downloaded 18 images
+// (20.9 MB) that no mode could ever display.
 async function loadAirports() {
-  const lists = [
-    await loadArray("airports.js", "airports"),
-    await loadArray("satellite-airports.js", "satelliteAirports"),
-  ];
-  const byCode = new Map();
-  for (const list of lists) {
-    for (const airport of list) {
-      if (!byCode.has(airport.code)) byCode.set(airport.code, airport);
-    }
-  }
-  return [...byCode.values()];
+  return loadArray("satellite-airports.js", "satelliteAirports");
 }
 
 // Per-airport zoom overrides; airports not listed use this target's default.

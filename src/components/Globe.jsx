@@ -252,13 +252,27 @@ export default function Globe() {
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
 
+    // Every texture here is fetched over the network, so a load can still land
+    // after this effect is torn down. The callbacks below all bail on this flag:
+    // without it they write into the orphaned `textures` map and flag
+    // `needsUpdate` on an already-disposed material.
+    let disposed = false;
+    let ringTexture = null;
+
     // Load Saturn's ring texture once and apply it to the ring material. A
     // failure here just leaves the untextured ring geometry, which still reads
-    // as a ring, so there is nothing to fall back to.
+    // as a ring, so there is nothing to fall back to. Held in its own variable
+    // rather than in `textures` (which is keyed by planet id) so the cleanup
+    // still disposes it — Material.dispose() does not touch its own maps.
     loader.load(
       SATURN_RING_URL,
       (tex) => {
+        if (disposed) {
+          tex.dispose();
+          return;
+        }
         tex.colorSpace = THREE.SRGBColorSpace;
+        ringTexture = tex;
         ringMaterial.map = tex;
         ringMaterial.needsUpdate = true;
       },
@@ -281,6 +295,7 @@ export default function Globe() {
       // back to the planet's flat base colour instead: plainly not a photo, but
       // at least it is the right planet.
       const applyFallbackColour = () => {
+        if (disposed) return;
         sphere.material.map = null;
         sphere.material.color.set(planet?.color || "#888888");
         sphere.material.needsUpdate = true;
@@ -293,6 +308,10 @@ export default function Globe() {
       loader.load(
         planet.url,
         (tex) => {
+          if (disposed) {
+            tex.dispose();
+            return;
+          }
           tex.colorSpace = THREE.SRGBColorSpace;
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
           tex.wrapS = THREE.RepeatWrapping;
@@ -355,22 +374,37 @@ export default function Globe() {
     };
     apiRef.current = { reset: startReset, setPlanet };
 
+    // The canvas is always square and always displayed at CANVAS_SCALE of the
+    // disc box, so neither the CSS size nor the camera aspect ever changes.
+    renderer.domElement.style.width = `${CANVAS_SCALE * 100}%`;
+    renderer.domElement.style.height = `${CANVAS_SCALE * 100}%`;
+    camera.aspect = 1;
+    camera.updateProjectionMatrix();
+
+    // Only the drawing buffer tracks the container. setSize reallocates it, so
+    // bail when the measurement hasn't actually changed: the observer fires on
+    // every step of a window drag and on mobile URL-bar collapse, and each of
+    // those would otherwise throw away and rebuild a multi-megapixel buffer.
+    let lastSize = 0;
     const resize = () => {
-      const size = container.clientWidth * CANVAS_SCALE;
+      const size = Math.round(container.clientWidth * CANVAS_SCALE);
+      if (size === 0 || size === lastSize) return;
+      lastSize = size;
       renderer.setSize(size, size, false);
-      renderer.domElement.style.width = `${CANVAS_SCALE * 100}%`;
-      renderer.domElement.style.height = `${CANVAS_SCALE * 100}%`;
-      camera.aspect = 1;
-      camera.updateProjectionMatrix();
     };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
 
-    const clock = new THREE.Clock();
+    // THREE.Clock is deprecated as of three 0.184; the file already reads
+    // performance.now() directly for the reset tween, so do the same here
+    // rather than pull in the Timer addon.
+    let last = performance.now();
     let frame;
     const animate = () => {
-      const delta = clock.getDelta();
+      const now = performance.now();
+      const delta = (now - last) / 1000;
+      last = now;
 
       if (reset) {
         const t = Math.min((performance.now() - reset.start) / RESET_DURATION, 1);
@@ -399,12 +433,14 @@ export default function Globe() {
     animate();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(frame);
       clearResume();
       observer.disconnect();
       controls.dispose();
       renderer.dispose();
       Object.values(textures).forEach((t) => t.dispose());
+      ringTexture?.dispose();
       sphere.geometry.dispose();
       sphere.material.dispose();
       ringGeometry.dispose();

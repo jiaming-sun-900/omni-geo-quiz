@@ -9,14 +9,14 @@ import { airports, matchAirport } from "../data/airports";
 
 const TOTAL_ROUNDS = 10;
 
-function pickAirport(usedIndices) {
-  const available = airports
+// `excludeIndex` is the airport currently on screen. Shuffle passes it so a
+// reshuffle can't hand back the dot you are already looking at.
+function pickAirport(usedIndices, excludeIndex = -1) {
+  const selectable = airports
     .map((a, i) => ({ airport: a, index: i }))
-    .filter(({ index }) => !usedIndices.has(index));
-  const pool =
-    available.length > 0
-      ? available
-      : airports.map((a, i) => ({ airport: a, index: i }));
+    .filter(({ index }) => index !== excludeIndex);
+  const available = selectable.filter(({ index }) => !usedIndices.has(index));
+  const pool = available.length > 0 ? available : selectable;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -85,11 +85,13 @@ function Game({
   };
 
   // Generate a new random target without advancing the round or changing the
-  // score. Resets the hint, clears feedback, and clears the input via the
-  // bumped shuffle key.
+  // score. Resets the hint and clears the input via the bumped shuffle key.
+  // Feedback is deliberately NOT cleared here — and the button is disabled while
+  // it is up. Clearing it re-enabled the input on an already-scored round, so
+  // answering again scored again without the round advancing: a 27/10 "Perfect
+  // score!" was reachable.
   const handleShuffle = () => {
-    setCurrent(pickAirport(usedIndices.current));
-    setFeedback(null);
+    setCurrent(pickAirport(usedIndices.current, current.index));
     setHintLevel(0);
     setHintOpen(false);
     setShuffleId((n) => n + 1);
@@ -140,9 +142,9 @@ function Game({
     <div className="quiz-container state-quiz">
       <div className="state-quiz-header">
         <div className="sq-right">
-          <div className="sq-box sq-round">Round {round}/{TOTAL_ROUNDS}</div>
-          <div className="sq-box sq-score">Score: {score}</div>
-          <button className="sq-box sq-restart" onClick={handleShuffle}>Shuffle</button>
+          <div className="sq-box sq-round" role="status">Round {round}/{TOTAL_ROUNDS}</div>
+          <div className="sq-box sq-score" role="status">Score: {score}</div>
+          <button className="sq-box sq-restart" onClick={handleShuffle} disabled={!!feedback}>Shuffle</button>
         </div>
       </div>
 
@@ -170,6 +172,7 @@ function Game({
           <button
             type="button"
             role="switch"
+            aria-label="Rivers"
             aria-checked={showRivers}
             className={`push-toggle ${showRivers ? "on" : ""}`}
             onClick={() => setShowRivers((v) => !v)}
@@ -182,6 +185,7 @@ function Game({
           <button
             type="button"
             role="switch"
+            aria-label="Mountains"
             aria-checked={showMountains}
             className={`push-toggle ${showMountains ? "on" : ""}`}
             onClick={() => setShowMountains((v) => !v)}
@@ -194,6 +198,7 @@ function Game({
           <button
             type="button"
             role="switch"
+            aria-label="State Borders"
             aria-checked={showBorders}
             className={`push-toggle ${showBorders ? "on" : ""}`}
             onClick={() => setShowBorders((v) => !v)}
@@ -205,8 +210,10 @@ function Game({
 
       <div className="quiz-controls">
         <p className="prompt">Which airport is marked by the red dot?</p>
+        {/* Keyed on round + shuffle so a new target remounts the field, which is
+            what clears it (see AirportGuessInput). */}
         <AirportGuessInput
-          key={shuffleId}
+          key={`${round}-${shuffleId}`}
           onSubmit={handleGuess}
           disabled={!!feedback}
           onHint={handleHint}

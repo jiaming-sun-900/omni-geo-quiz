@@ -15,6 +15,7 @@ interactive Three.js globe.
 - `npm run dev` — start Vite dev server (serves at `/omni-geo-quiz/` base path)
 - `npm run build` — production build to `dist/`
 - `npm run preview` — preview production build locally
+- `npm run lint` — ESLint; **must stay at zero errors**, CI fails the build otherwise
 
 ## Stack
 
@@ -32,11 +33,20 @@ interactive Three.js globe.
 HomeScreen and the quiz components, which live in a `QUIZZES` lookup keyed by
 mode.
 
-**Code splitting.** HomeScreen (and Three.js with it) is in the initial bundle;
-every quiz mode is a `React.lazy` import behind one `<Suspense>` with the
-`.mode-loading` fallback. This keeps d3-geo, topojson and the us-atlas TopoJSON
-(a ~179 kB chunk) out of first load for players who only open a satellite mode.
-Adding a mode means adding a `lazy()` line and a `QUIZZES` entry, nothing else.
+**Code splitting.** Every quiz mode is a `React.lazy` import behind one
+`<Suspense>` with the `.mode-loading` fallback, and **Globe is lazy too**, loaded
+inside HomeScreen behind its own `<Suspense>`. Adding a mode means adding a
+`lazy()` line and a `QUIZZES` entry, nothing else.
+
+Globe has to be split because Three.js + OrbitControls is ~649 kB and Globe also
+imports `d3-geo`, `topojson-client` and `world-atlas/countries-110m.json`. While
+it sat in the entry chunk, a player who only opens a satellite mode — which needs
+none of that — still downloaded all of it, and the earlier claim here that d3-geo
+and topojson were deferred was simply false. Current split: entry **197 kB**
+(62 kB gzip), `Globe` 647 kB, `USMap` (us-atlas TopoJSON) 179 kB, each quiz
+4–16 kB. The Globe `<Suspense>` fallback reuses the real `.globe-*` class names
+and keeps the three control rows at `visibility: hidden`, so it reserves the exact
+same four rows and the home screen doesn't reflow when the globe arrives.
 
 **USMap.jsx** is the shared map component used by the map-based quiz modes (State, City, and the Airport Blank Map). It renders an SVG with:
 - All continental US state paths filled white with white stroke (no visible state borders)
@@ -52,6 +62,23 @@ shrinks: at 6px the dot is wider than Rhode Island (5.4 × 7.7px projected) on a
 which turned those rounds into guesswork. Tying it to the width keeps the dot
 covering the same geographic area at every size, and the 6px ceiling leaves the
 desktop look unchanged.
+
+**Overlay strokes scale the same way, and for the same reason.** State borders
+are `#8c93a0` (3.09:1 on white, clearing the 3:1 non-text floor — the old
+`#c0c0c0` was 1.82:1) and the width scales *inversely* with map width, ~0.73px on
+a 958px desktop map and ~1.20px on a 363px phone map. At a fixed 0.5px the
+strokes went sub-pixel on a phone, so flipping State Borders ON appeared to do
+nothing at all. Mountains are `#A9C49A` with a `#6F8F5C` outline for the same
+visibility reason. Both must read clearly when ON without becoming a heavy
+graphic — this is still a blank-map quiz.
+
+**USMap subscribes to resize exactly once**, via `ResizeObserver` on
+`.us-map-wrap`. It used to also listen to window `resize` and `orientationchange`,
+which the observer already covers, and `computeDims` returned a fresh object every
+call so `setDimensions` re-rendered even when the box hadn't moved — one resize
+fired 2–3 full `selectAll("*").remove()` + re-project cycles. It now bails when
+the measured dimensions are unchanged: 30 resize + 30 orientationchange events at
+a fixed viewport cause **zero** redraws, and six distinct widths cause exactly six.
 
 **The geometry lives in `src/data/usGeo.js`**, not in USMap: `nation` plus
 `states` (GeoJSON features excluding only the territories AS/GU/MP/PR/VI —
@@ -83,7 +110,18 @@ refreshed after each render so the handler always sees the current round without
 re-attaching. Clicks inside `.sq-toggles`, `.state-quiz-header` and
 `.sq-bottom-left` are ignored: those controls own their own clicks, and before
 the exception existed, flipping an overlay to double-check an answer also burned
-the round.
+the round. The **Hint** button and **Shuffle / New Image** are `disabled` while
+the bubble is up rather than merely excluded from the advance: excluding them made
+the click a silent no-op, and in the three map modes `handleShuffle` used to also
+call `setFeedback(null)`, which re-enabled the input without advancing the round
+counter — a player could answer, Shuffle, answer again, and farm **27/10 and a
+"Perfect score!"** while `reviewRef` collected duplicate `round` values. The four
+satellite modes never had the bug; their `handleNewImage` omits the reset. Keep it
+that way.
+
+`pick…` takes an exclude argument covering the *current, unanswered* target as
+well as the answered ones, so Shuffle can never hand back the target already on
+screen (which looked like a broken button).
 
 **End-of-game review.** Every `Game` accumulates one entry per answered round in a
 `reviewRef` (pushed from `handleGuess`, so a Shuffle / New Image that replaces the target
@@ -102,13 +140,43 @@ stays in round order), and gives every entry a Wikipedia and a satellite-map lin
 so there is no hand-maintained URL table: Wikipedia goes through `Special:Search?go=Go`
 (jumps to the article on a title match, falls back to a result list instead of a 404), and
 the map uses Google's documented Maps URLs API on the satellite basemap at the round's
-exact coordinates. `TITLE_OVERRIDES` in that file holds the two entries whose data-file
-name differs from Wikipedia's title; the rest were verified against the MediaWiki API.
-Note the results screen is the one screen in the app allowed to scroll.
+exact coordinates. `TITLE_OVERRIDES` in that file holds the entries whose data-file name
+differs from Wikipedia's title — two where the name itself differs, plus `Cartagena` and
+`Gold Coast`, which are Wikipedia *disambiguation* pages and need the qualified form.
+Targeted overrides were chosen over passing `${name}, ${country}` for every world city,
+which would have risked regressing the other 52. The rest were verified against the
+MediaWiki API. The percentage is computed from `review.length`, not the `total` prop, and
+rows are keyed on their pre-sort index rather than `item.round`, so neither can be thrown
+off by a malformed review array. The heading is focused on mount, since otherwise the
+unmounting answer input dropped focus to `<body>` and a screen-reader user was never told
+the game had ended. Note the results screen is the one screen in the app allowed to scroll.
 
 **State Quiz point generation** (`utils/randomPoint.js`): picks the largest polygon of a state by bounding-box area, shrinks bounds by 10%, and rejection-samples up to 1000 times using point-in-polygon to guarantee the dot falls inside the state.
 
-**Fuzzy matching** (`utils/fuzzyMatch.js`): normalizes input (lowercase, strip punctuation), checks common abbreviations (DC, NYC, LA, etc.), then falls back to Levenshtein distance with a 25%-of-answer-length threshold.
+**Fuzzy matching** (`utils/fuzzyMatch.js`): normalizes input (lowercase, strip
+punctuation), checks common abbreviations (DC, NYC, LA, etc.), then falls back to
+Levenshtein distance. **It takes the pool as an argument**, because three guards
+need to know what the other valid answers are:
+
+1. A guess that exactly equals a *different* entry in the same pool is rejected
+   outright, never fuzzed.
+2. Generic tokens (`international`, `airport`, `intl`, `regional`, `national`,
+   `field`) are stripped from both sides before the distance is computed.
+3. The threshold is capped at **2** and derived from the *stripped* length.
+
+Without these, a plain 25%-of-answer-length threshold scored **87 wrong answers
+as correct**: 58 pairs in World Airport alone (23 of 60 targets — `Cancun
+International` was accepted for Incheon, Athens, Kansai, Hamad, Vancouver,
+Tocumen, Galeão and Cairo, because the shared `International` suffix bought a
+threshold of 5–6), 15 in US Airport, 9 in Satellite Airport, and North/South
+Dakota, North/South Carolina and `Kansas`→Arkansas in the State Quiz. All 87 are
+now rejected while typo tolerance is intact (`Philadelpia`, `Cincinatti`,
+`Massachusets`, `Pittsburg`, `Albuquerqe`, `Callifornia`, `Pensylvania`,
+`Minneapols` all still pass). `matchesState` additionally rejects a bare
+two-letter abbreviation belonging to another state, so `ND` no longer scores for
+South Dakota. **If you widen the threshold or add a pool, re-run a full
+cross-accept sweep** — every entry against every other entry's accepted forms —
+because this class of bug is invisible to spot-checking.
 
 **City data** (`data/cities.js`): 62 hardcoded US cities with `{name, lat, lng, state}`. Coordinates are approximate city centers. This is the authoritative city list — add/remove entries here to change the City Quiz pool.
 
@@ -147,17 +215,28 @@ first option on open and closes on Escape or a backdrop click.
   `src/data/satellite-world-airports.js` (60 airports); accepts the IATA code, the full
   airport name or the city. Four hint levels: continent → country → city → IATA code.
 
-Both satellite quizzes share `AirportGuessInput` (it takes an optional `placeholder` and a
-custom `getSuggestions`) and the floating `FeedbackBubble` / hint-bubble behavior. Note the
-two quizzes use **different** region groupings: the Airport quiz uses Census-style regions;
-the City quiz uses a finer set (West Coast, Southwest, Mountain West, Midwest, South,
-Southeast, Northeast, Non-contiguous).
+The satellite quizzes share `AirportGuessInput` (it takes an optional `placeholder` and a
+custom `getSuggestions`), the floating `FeedbackBubble` / hint-bubble behavior, and
+`SatelliteImage.jsx` — one component holding the loading, error and retry states for all
+four modes. Before it existed each rendered a bare `<img>` with no `onError`: at ~1.2 MB
+an image, a slow connection showed an unexplained blank square and a 404 showed a
+broken-image glyph with no way to recover. It is inline-styled rather than adding to
+`App.css`.
+
+Note the two *airport/city* variants use **different** region groupings: the Airport quiz
+uses Census-style regions; the City quiz uses a finer set (West Coast, Southwest, Mountain
+West, Midwest, South, Southeast, Northeast, Non-contiguous).
 
 ## Data Files
 
 - **`src/data/cities.js`** — 62 US cities with `{name, lat, lng, state}` (plus
   abbreviation/suggestion helpers). Authoritative City Quiz pool.
 - **`src/data/airports.js`** — 37 US airports with `{code, name, city, lat, lng, state, hubs}`.
+  `AMBIGUOUS_CITIES` (derived from the data, not hand-listed: Chicago, Houston, Washington,
+  New York, Dallas) blocks the bare city name for the 10 airports that share one, since
+  `Chicago` used to score on both ORD and MDW — two different dots, one accepted answer.
+  Each airport's own code and distinctive name still work. Same approach as
+  `WorldAirportSatelliteQuiz.jsx`.
 - **`src/data/satellite-airports.js`** — 28 airports curated for visual distinctiveness,
   the pool for the Airport Satellite Quiz.
 - **`src/data/satellite-cities.js`** — all 62 cities (mirrors `cities.js`, fields
@@ -171,8 +250,18 @@ Southeast, Northeast, Non-contiguous).
 - **`src/data/usGeo.js`** — the us-atlas TopoJSON as GeoJSON: `nation` and `states`.
 
 Entries in the two world files tagged `// VERIFY` have coordinates or a crop that has
-not yet been checked against the fetched image. `docs/world-*-quiz-roster.md` holds the
-rosters those pools were built from.
+not yet been checked against the fetched image — 18 remain in `satellite-world-cities.js`
+and 10 in `satellite-world-airports.js`. `docs/world-*-quiz-roster.md` holds the rosters
+those pools were built from.
+
+**Coordinates have been machine-verified**, not eyeballed: every US city and airport
+point tests inside its claimed state via point-in-polygon against `usGeo.js`. That sweep
+is what caught DCA, which sat at `-77.0377` — inside the District of Columbia, while the
+entry claimed `state: "Virginia"`, so the blank-map dot and its level-2 hint disagreed.
+It is now `-77.0402`, verified inside Virginia. Eight world entries (Hong Kong, Dubai,
+Doha, Panama City, HKG, DPS, DOH, GIG) fall outside their country's 110m polygon but are
+0.2–4 km from mapped coastline — harbour crops and reclaimed-land airfields the coarse
+coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 
 ## Satellite Imagery
 
@@ -184,13 +273,17 @@ rosters those pools were built from.
   `format=jpg`, north-up orientation. Per-entry zoom and coordinate overrides live in the
   script. Re-runs skip images that already exist.
 - **The committed images predate `format=jpg`**, so despite their `.jpg` names they are
-  still the API's default png8: 256-colour indexed PNG, ~1.2 MB each, 254 MB over 222
+  still the API's default png8: 256-colour indexed PNG, ~1.2 MB each, 233 MB over 204
   files (`file public/satellite/cities/Chicago.jpg` says `PNG image data ... 8-bit
-  colormap`). That is visible colour banding on continuous-tone imagery, ~14 MB
-  downloaded per 10-round game, and a quarter of the 1 GB GitHub Pages limit. Converting
-  the set means deleting a target's directory and re-fetching it, which costs API quota,
-  so it hasn't been done. `public/satellite/airports/` also holds 18 images for airports
-  that are in `airports.js` but not in the satellite pool, and so are never shown.
+  colormap`). That is visible colour banding on continuous-tone imagery, 10.7–12.2 MB
+  downloaded per 10-round game depending on mode, and still ~23% of the 1 GB GitHub Pages
+  limit. Converting the set means deleting a target's directory and re-fetching it, which
+  costs API quota, so it hasn't been done.
+- **The `airports` target fetches only `satellite-airports.js`.** It used to union that
+  with `airports.js`, which is the *blank-map* pool and renders no imagery at all — so 18
+  images (20.9 MB) were committed that no code path could ever load. They have been
+  deleted and the script narrowed; don't re-widen it, or the next run silently re-downloads
+  them on your API quota. The directory now holds exactly the 28 files the pool needs.
 - Airport files are named `{CODE}.jpg`; city files are `{CityName}.jpg` with spaces →
   underscores, and a `_{State}` suffix is appended to duplicate city names (e.g. Portland)
   to avoid collisions.
@@ -205,6 +298,21 @@ rosters those pools were built from.
   independent), cycling through five planets (Earth, Mars, Jupiter, Saturn, Neptune).
   Earth uses a locally-painted canvas texture; the others lazy-load equirectangular
   photos, and Saturn renders a 3D ring.
+- **Globe teardown has two non-obvious cases.** Saturn's ring texture is *not* in the
+  `textures` map (which is keyed by planet id), so it needs its own disposal —
+  `Material.dispose()` does not dispose textures, and without it one GPU texture leaked per
+  mount. And a `loader.load` in flight at unmount would write into the orphaned `textures`
+  object and call `needsUpdate` on a disposed material, so a `disposed` flag set first in
+  cleanup makes both the success and fallback callbacks bail (disposing the orphan texture).
+  Planet switching itself does not leak — `textures` caches by id — but visiting all five
+  holds ~30–40 MB of GPU texture.
+- **The globe canvas is displayed at 250%, on purpose.** `.globe-disc canvas` is
+  `width/height: 250%` with `margin: -75%` and `overflow: visible` on the disc, so Saturn's
+  ring at radius 2.2 isn't clipped and the camera zooms out to match. The drawing buffer is
+  therefore `min(DPR, 2)` per *displayed* CSS pixel — correct retina rendering, not
+  oversampling. Don't "optimize" the 250× multiplier away; it leaves the buffer stretched
+  over a 2.5× larger canvas and the globe goes blurry. `resize()` does bail when the
+  measurement is unchanged, so a window drag no longer reallocates the buffer per tick.
 - All quiz screens share the same retro button style documented in the Design System
   section below.
 - **Autocomplete accessibility**: the three answer fields (`StateGuessInput`,
@@ -214,6 +322,17 @@ rosters those pools were built from.
   The dropdown already had `role="listbox"`/`role="option"`; without the input side of the
   pair a screen reader was never told the suggestions existed and arrow-key movement was
   silent.
+- **Other screen-reader wiring**, all added because the visual design already conveyed the
+  information and the accessibility tree didn't: the nine overlay switches carry
+  `aria-label` (they had `role="switch"` + `aria-checked` but their label was a sibling
+  `<span>`, so they announced as "switch, ON" with no indication of *what*); the Round and
+  Score boxes are `role="status"` so changes are announced at all; the sub-mode modal traps
+  Tab between its two options and restores focus to the menu row that opened it (it already
+  moved focus in and closed on Escape, but Tab escaped behind the backdrop and focus was
+  never given back).
+- **Touch targets**: review links are `inline-flex` with `min-height: 40px` (measured
+  85×40px). As inline anchors the padding alone did nothing and they were ~28px — below even
+  the 34px the same block grants `.push-toggle`.
 - **Globe texture failures**: the planet photos are hotlinked from Wikimedia, so they can
   fail (offline, blocked network, a renamed Commons file). `setPlanet` therefore clears the
   outgoing photo immediately and passes an `onError` that paints the planet's flat base
@@ -221,13 +340,18 @@ rosters those pools were built from.
   the label read the new one, so an unreachable Mars looked exactly like Earth. These
   textures are CC BY (Solar System Scope) and are not yet credited anywhere in the UI;
   self-hosting them under `public/` would also remove the runtime dependency on Wikimedia.
-- **Known lint exceptions**: `npm run lint` is clean except for three
-  `react-hooks/set-state-in-effect` errors, one per answer-input component. They are the
-  effect that clears the field when a new round starts (keyed on `disabled`). Removing it
-  means remounting each input via a `key` that includes the round, across all seven
-  quizzes, and the focus/clear behaviour is the same in every mode — worth doing
-  deliberately rather than as a drive-by, since the payoff is one avoided re-render per
-  round.
+- **The answer inputs are cleared by remount, not by an effect.** Each of the three input
+  components used to clear its field from an effect keyed on `disabled`, which was the
+  project's only three lint errors (`react-hooks/set-state-in-effect`). The effect is gone;
+  every quiz now keys the input `${round}-${shuffleId}` (map modes) or
+  `${round}-${current.index}` (satellite modes), so a new round and a Shuffle both remount
+  it. If you touch this, preserve all three behaviours it carries: the field clears on a new
+  round, Shuffle still remounts, and `autoFocus={!isTouchDevice()}` stays — focusing on
+  remount on a phone pops the keyboard over the map before the player has seen it.
+- **CI** (`.github/workflows/ci.yml`): install → `npm run lint` → `npm run build` on push
+  and PR to `main`, with no `continue-on-error`. **`npm run lint` must stay at zero
+  errors** — the gate exists because it was previously running nowhere. No deploy job;
+  publishing is still a manual `gh-pages -d dist`.
 
 ## Design System
 
@@ -245,8 +369,16 @@ The established visual language across all screens. New UI should conform to it.
   viewport) they collapse into a single compact top bar; see Responsive Layout.
 - **Control panel**: a bordered container with the same hard-shadow style; each row has a
   left-aligned label and a right-aligned ON/OFF button.
-- **ON/OFF toggle buttons**: retro push-button style. OFF state shows black text; ON state
-  shows orange `#F97316` text.
+- **ON/OFF toggle buttons**: retro push-button style. OFF is `#1a1a1a` text on the raised
+  `#e2ddd2` face (12.6:1). ON **fills** the button with the signature orange `#FF4F00` and
+  switches the text to `#111` (5.73:1). ON used to be orange *text* on the pressed face,
+  which was **1.96:1 — unreadable** — and signalled purely by hue, a WCAG 1.4.1 failure.
+  Filling fixes both at once: it flips the button's luminance, so ON and OFF differ by
+  2.43:1 even in greyscale. The Submit button's enabled state had the identical bug and got
+  the identical treatment. **Any new toggle state must clear 4.5:1 and be distinguishable
+  without colour.**
+- **Text colours**: secondary/meta text is `#6E6E7A` (4.71:1 on `#FAF7F4`). The former
+  `#888` was 3.3–3.5:1, below AA.
 - **Layout**: every screen uses a no-scroll, full-viewport layout.
 - **Map**: a blank white US continental map rendered with the Albers USA projection — no
   state borders or labels visible by default.
@@ -269,24 +401,46 @@ desktop layout untouched; the tiers only add overrides below that.
   button is pinned to the container's top-left (the empty half of that same row), and
   `.sq-toggles` becomes a compact horizontal row under the map. Nothing is layered over
   anything else, so the map/image gets whatever room is left.
+  **The Home square's width is reserved, not assumed:** `--sq-home-size` is the single
+  source for it and the header takes it as `padding-left`, with `.sq-right` allowed to wrap
+  as a backstop. Without the reservation the three right-hand boxes (~325px) simply ran over
+  the absolutely-positioned Home button at 375–390px wide. A `≤430px` block trims the box
+  type so the bar stays one 42px row; verified no overlap and no horizontal scroll at 320,
+  360, 375, 390, 414 and 768px.
 - **Tier 3 — ≤600px**: phone sizing. The guess form rewraps so the text field gets its own
   full-width row with Hint + Submit sharing the row beneath it (matched via
   `.guess-form > [type="submit"]`, since the three inputs style Submit differently). The
   sub-mode modal squares shrink to `min(42vw, 13rem)`.
+- **1025–1220px wide (and ≥621px tall)**: the same wrap as the phone tier, because the
+  desktop `padding-inline: var(--controls-inset)` (15rem a side) left the text field just
+  **82px** wide in that band. The fix wraps the form rather than shrinking
+  `--controls-inset`, which would slide the form under the toggle panel; the input goes to
+  398px at 1025px and ≥1280px stays byte-identical in layout.
 - **Tier 4 — ≤400px / ≤380px / landscape**: last-resort tightening. The `[ENTER]` menu tag
   is dropped below 380px; landscape phones get every vertical margin trimmed.
 
 The home screen additionally has **height**-driven tiers, because its content (globe +
 title + five menu rows) is the tallest thing in the app. These must stay mutually
 disjoint — they set the same properties, so any overlap means "whichever block is last in
-the file wins" and the layout grows again instead of shrinking. The live partition is:
+the file wins" and the layout grows again instead of shrinking.
+
+This table used to describe a partition that **wasn't actually disjoint**: a 600×500
+landscape phone matched the short-phone tier, the `≤700px`-tall tier and the
+landscape-phone tier all at once, and only rendered correctly because the landscape block
+happened to sit last in the file. The guards now enforce the partition themselves — note
+the explicit "not the short-landscape case" branch on the phone tier:
 
 | Tier | Condition |
 | --- | --- |
-| short phone | `≤600px` wide and `≤800px` / `≤700px` tall |
+| short phone | `≤600px` wide, `≤800px` / `≤700px` tall, **and** (`≥521px` tall **or** portrait) |
 | landscape phone | `≤520px` tall, landscape |
 | short stacked home | `601–900px` wide, `521–720px` tall |
 | short two-column home | `≥901px` wide, `521–720px` tall |
+
+The `≤800px` / `≤700px` pair still deliberately nests — the second only overrides a few
+values on top of the first — and is commented as such in `App.css` so it doesn't read as
+the same accident. Verified by measuring the winning block at 600×500, 375×500, 320×480,
+700×480, 800×650 and 1000×650.
 
 Everything fits without scrolling from 360×780 up; only 320×568 and 568×320 still scroll,
 which is fine now that `.home-screen` scrolls rather than clipping (see below).
@@ -315,7 +469,12 @@ Other pieces of the system:
   `dvh` heights and the container-query frame sizing therefore keep their fallback in the
   base rule and put the modern value inside `@supports (…)`, which the minifier can't
   collapse. Same class of trap as the `backdrop-filter` prefix note above — check
-  `dist/assets/*.css` after touching either.
+  `dist/assets/*.css` after touching either. The feedback bubble's `max-height` was an
+  *inline* `80dvh` with no fallback, which dodged Lightning CSS but would drop out entirely
+  on an engine without `dvh` and let a long reveal overflow; it is now a
+  `.feedback-bubble` class with the same base-plus-`@supports` shape. A scripted scan
+  currently finds zero stacked same-property declarations in the stylesheet — keep it that
+  way, and re-run it rather than trusting a reading.
 - **Desktop collision guard**: `.state-quiz` sets `--map-inset` / `--controls-inset`, which
   reserve horizontal room for the floating corner boxes and the toggle panel so the
   centered map and prompt can never slide underneath them in a narrow desktop window. The

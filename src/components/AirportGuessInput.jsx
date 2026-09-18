@@ -32,6 +32,11 @@ function HintBubble({ content }) {
 // but without aria-expanded / aria-controls / aria-activedescendant on the input
 // a screen reader was never told the suggestions existed, and arrow-key movement
 // through them was silent.
+//
+// The field is cleared by the PARENT remounting this component on a new round
+// (its `key` carries the round), not by an effect watching `disabled`. Mount
+// state is already empty, and `autoFocus` refocuses — skipped on touch devices
+// so the on-screen keyboard doesn't cover the map/image before you've seen it.
 export default function AirportGuessInput({
   onSubmit,
   disabled,
@@ -68,17 +73,6 @@ export default function AirportGuessInput({
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [hintOpen, onHintClose]);
-
-  // Clear the field when a new round starts. Refocusing is skipped on touch
-  // devices so the on-screen keyboard doesn't cover the map/image unasked.
-  useEffect(() => {
-    if (!disabled) {
-      setValue("");
-      setOpen(false);
-      setHighlighted(-1);
-      if (!isTouchDevice()) inputRef.current?.focus();
-    }
-  }, [disabled]);
 
   useEffect(() => {
     const onDocMouseDown = (e) => {
@@ -140,6 +134,11 @@ export default function AirportGuessInput({
           type="button"
           className={`btn hint-btn${hintMaxed ? " maxed" : ""}`}
           onClick={onHint}
+          // Inert once the round is answered. It used to stay live, and because
+          // `.quiz-controls` is not one of the advance-on-dismiss exceptions, a
+          // post-answer click on Hint advanced the round instead of reopening
+          // the hint.
+          disabled={disabled}
         >
           {hintLevel > 0 ? `Hint ${hintLevel}/${hintMax}` : "Hint"}
         </button>
