@@ -4,8 +4,7 @@ import GuessInput from "./GuessInput";
 import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
-import { cities, allCityNames } from "../data/cities";
-import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { cities, matchCity } from "../data/cities";
 
 const TOTAL_ROUNDS = 10;
 
@@ -45,7 +44,7 @@ function Game({
   const reviewRef = useRef([]);
 
   const handleGuess = (guess) => {
-    const correct = fuzzyMatch(guess, current.city.name, allCityNames);
+    const correct = matchCity(guess, current.city);
     if (correct) {
       const next = score + 1;
       setScore(next);

@@ -21,8 +21,12 @@ const MAX_DISTANCE = 2;
 const ABBREVIATIONS = {
   dc: "district of columbia",
   "washington dc": "district of columbia",
-  "st louis": "saint louis",
+  washington: "washington dc",
+  // Guess → answer, both normalized. The data spells it "St. Louis", so it is
+  // the long form that needs mapping, not the short one.
+  "saint louis": "st louis",
   nyc: "new york",
+  "new york city": "new york",
   ny: "new york",
   la: "los angeles",
   sf: "san francisco",
@@ -33,8 +37,12 @@ const ABBREVIATIONS = {
   kc: "kansas city",
 };
 
+// Accents are folded rather than dropped, so "Sao Paulo" equals "São Paulo"
+// exactly instead of spending the typo budget on the missing letter.
 function normalize(s) {
   return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ")
@@ -83,7 +91,21 @@ export function fuzzyMatch(guess, answer, pool = []) {
     MAX_DISTANCE,
     Math.max(1, Math.floor(as.length * 0.25))
   );
-  return levenshtein(gs, as) <= threshold;
+  const distance = levenshtein(gs, as);
+  if (distance > threshold) return false;
+
+  // Within budget, but a typo is only a typo of THIS answer if no other entry
+  // is at least as close. The exact-name guard above stops "North Dakota"
+  // scoring for South Dakota; this stops "Noth Dakota" doing the same, and
+  // "Orland" scoring for Portland when it is one letter from Orlando too. A tie
+  // ("Akansas" is one edit from both Kansas and Arkansas) is ambiguous, so it
+  // scores for neither.
+  for (const other of pool) {
+    const o = normalize(other);
+    if (o === a) continue;
+    if (levenshtein(gs, stripGeneric(o)) <= distance) return false;
+  }
+  return true;
 }
 
 function levenshtein(a, b) {

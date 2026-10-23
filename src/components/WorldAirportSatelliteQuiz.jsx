@@ -6,7 +6,7 @@ import SatelliteImage from "./SatelliteImage";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 import { airportWikiQuery } from "../utils/reviewLinks";
 import { satelliteWorldAirports } from "../data/satellite-world-airports";
-import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { makeAirportMatcher } from "../utils/airportMatch";
 
 const TOTAL_ROUNDS = 10;
 const HINT_MAX = 4;
@@ -15,46 +15,11 @@ const HINT_MAX = 4;
 // served under the configured base path.
 const IMG_BASE = `${import.meta.env.BASE_URL}satellite/world-airports/`;
 
-// Cities served by more than one airport in the roster (Beijing PEK/PKX,
-// Shanghai PVG/SHA, Tokyo HND/NRT, Osaka KIX/ITM, London LHR/LGW). For these the
-// city name alone is ambiguous, so a city-only guess is NOT accepted — the player
-// must give the IATA code or the specific airport name (both selectable from the
-// autocomplete). Derived from the data so it stays correct if the roster changes.
-const AMBIGUOUS_CITIES = (() => {
-  const counts = new Map();
-  for (const a of satelliteWorldAirports) {
-    counts.set(a.city, (counts.get(a.city) || 0) + 1);
-  }
-  return new Set([...counts].filter(([, n]) => n > 1).map(([city]) => city));
-})();
-
-// Every valid answer of each kind, handed to the fuzzy matcher so a guess that
-// exactly names a different airport is rejected rather than treated as a typo of
-// this one. Without it the shared "International" suffix made 58 wrong pairs
-// score as correct across 23 of the 60 targets.
-const AIRPORT_ANSWERS = [
-  ...satelliteWorldAirports.map((a) => a.name),
-  ...satelliteWorldAirports.map((a) => a.iata),
-];
-const AIRPORT_CITIES = [...new Set(satelliteWorldAirports.map((a) => a.city))];
-
-// Accept a match on any of three: the exact IATA code, the full airport name
-// (fuzzy), or the city name (fuzzy). The IATA code and full name uniquely
-// identify an airport. The city name is accepted only when the city has a single
-// airport in the roster — for same-city pairs the player must disambiguate via
-// the code or full name.
-function matchAirport(guess, airport) {
-  const g = guess.trim().toLowerCase();
-  if (g === airport.iata.toLowerCase()) return true;
-  if (fuzzyMatch(guess, airport.name, AIRPORT_ANSWERS)) return true;
-  if (
-    !AMBIGUOUS_CITIES.has(airport.city) &&
-    fuzzyMatch(guess, airport.city, AIRPORT_CITIES)
-  ) {
-    return true;
-  }
-  return false;
-}
+// Code, name, short name ("Heathrow", "Haneda", "Pudong") or, where it names a
+// single airport, the city. Beijing, Shanghai, Tokyo, Osaka and London each have
+// two airports in the roster, so for those the city alone is not accepted. See
+// utils/airportMatch.js.
+const matchAirport = makeAirportMatcher(satelliteWorldAirports, "iata");
 
 // Suggestions matched on IATA code, city, or airport name, formatted
 // "HKG — Hong Kong International". The airport name in the label lets same-city
@@ -82,26 +47,17 @@ function getSuggestions(query, limit = 10) {
   }));
 }
 
-function pickAirport(usedIndices) {
-  const available = satelliteWorldAirports
+// `excludeIndex` is the airport currently on screen. New Image passes it, so it
+// can neither hand back the image already showing nor (while unplayed entries
+// remain) one answered earlier in this game, which would then appear twice in
+// the end-of-game review.
+function pickAirport(usedIndices, excludeIndex = -1) {
+  const selectable = satelliteWorldAirports
     .map((a, i) => ({ airport: a, index: i }))
-    .filter(({ index }) => !usedIndices.has(index));
-  const pool =
-    available.length > 0
-      ? available
-      : satelliteWorldAirports.map((a, i) => ({ airport: a, index: i }));
+    .filter(({ index }) => index !== excludeIndex);
+  const available = selectable.filter(({ index }) => !usedIndices.has(index));
+  const pool = available.length > 0 ? available : selectable;
   return pool[Math.floor(Math.random() * pool.length)];
-}
-
-// Pick a random airport guaranteed to differ from the one currently shown. Used
-// by the "New Image" button, which doesn't touch the used-index set or the round.
-function pickDifferentAirport(currentIndex) {
-  let pick;
-  do {
-    const i = Math.floor(Math.random() * satelliteWorldAirports.length);
-    pick = { airport: satelliteWorldAirports[i], index: i };
-  } while (pick.index === currentIndex && satelliteWorldAirports.length > 1);
-  return pick;
 }
 
 function Game({ onHome, onFinish }) {
@@ -161,7 +117,7 @@ function Game({ onHome, onFinish }) {
   // score. Only the shown airport and the hint state reset, so hints are fresh
   // for the new image. The guess input is keyed on current.index, so it clears too.
   const handleNewImage = () => {
-    setCurrent((cur) => pickDifferentAirport(cur.index));
+    setCurrent(pickAirport(usedIndices.current, current.index));
     setHintLevel(0);
     setHintOpen(false);
   };

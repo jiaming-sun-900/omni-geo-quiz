@@ -143,7 +143,10 @@ that way.
 
 `pick…` takes an exclude argument covering the *current, unanswered* target as
 well as the answered ones, so Shuffle can never hand back the target already on
-screen (which looked like a broken button).
+screen (which looked like a broken button). All seven modes share that rule: the
+four satellite modes used to have a separate `pickDifferent…` for New Image that
+ignored the answered set, so in round 10 of Airport Satellite a third of clicks
+brought back an airport already played, and the review listed it twice.
 
 **End-of-game review.** Every `Game` accumulates one entry per answered round in a
 `reviewRef` (pushed from `handleGuess`, so a Shuffle / New Image that replaces the target
@@ -178,14 +181,19 @@ the game had ended. Note the results screen is the one screen in the app allowed
 
 **Fuzzy matching** (`utils/fuzzyMatch.js`): normalizes input (lowercase, strip
 punctuation), checks common abbreviations (DC, NYC, LA, etc.), then falls back to
-Levenshtein distance. **It takes the pool as an argument**, because three guards
-need to know what the other valid answers are:
+Levenshtein distance. Accents are folded first, so `Sao Paulo` equals `São Paulo`
+exactly. **It takes the pool as an argument**, because the guards need to know what
+the other valid answers are:
 
 1. A guess that exactly equals a *different* entry in the same pool is rejected
    outright, never fuzzed.
 2. Generic tokens (`international`, `airport`, `intl`, `regional`, `national`,
    `field`) are stripped from both sides before the distance is computed.
 3. The threshold is capped at **2** and derived from the *stripped* length.
+4. A guess within the threshold is still rejected if another entry is **at least
+   as close**. Guard 1 only catches exact names, so `Noth Carolina` scored for
+   South Carolina and `Orland` for Portland (it is one letter from Orlando too).
+   Ties score for neither: `Akansas` is one edit from both Kansas and Arkansas.
 
 Without these, a plain 25%-of-answer-length threshold scored **87 wrong answers
 as correct**: 58 pairs in World Airport alone (23 of 60 targets — `Cancun
@@ -197,9 +205,31 @@ now rejected while typo tolerance is intact (`Philadelpia`, `Cincinatti`,
 `Massachusets`, `Pittsburg`, `Albuquerqe`, `Callifornia`, `Pensylvania`,
 `Minneapols` all still pass). `matchesState` additionally rejects a bare
 two-letter abbreviation belonging to another state, so `ND` no longer scores for
-South Dakota. **If you widen the threshold or add a pool, re-run a full
-cross-accept sweep** — every entry against every other entry's accepted forms —
-because this class of bug is invisible to spot-checking.
+South Dakota. **`npm run check` (`scripts/check-answers.js`, also in CI) runs the
+full cross-accept sweep**: every accepted form of every entry against every other
+entry's matcher, ~48,000 checks, plus the typo, nickname and near-miss cases
+above. This class of bug is invisible to spot-checking, so add a case there
+whenever you find one by hand. The script loads `src/` through Vite's
+`runnerImport`, which is why a matcher has to live in a plain module
+(`data/*.js`, `utils/*.js`) rather than a component file to be testable.
+
+**Airport answers** (`utils/airportMatch.js`): one `makeAirportMatcher(pool,
+codeKey)` serves all three airport pools (it used to be copied into each). Beyond
+the code, the full name and, where only one airport serves it, the city, each
+airport answers to a **short name derived from its name** with the city words and
+filler (`International`, `Intercontinental`, `Field`, ...) removed, so `Midway`,
+`Love Field`, `Heathrow`, `Haneda`, `Pudong` and `Fort Worth` score. Before this,
+for the ten US and ten world airports whose city has a second airport, the only
+accepted answers were the code or the full stored string. A short name that is
+itself a city in the pool is dropped (BWI would otherwise answer to
+`Washington`). `NICKNAMES` in the same file, keyed by IATA code, holds what people
+call an airport when it is not derivable: `Hartsfield`, `Reagan`, `Hobby`,
+`Kennedy`, `SeaTac`, `de Gaulle`.
+
+**City answers**: `matchCity` in `data/cities.js` serves both US City quizzes, and
+`matchWorldCity` in `data/satellite-world-cities.js` the World City Quiz. When the
+satellite autocomplete's `City, State` is submitted the state must be right, so
+picking `Portland, Maine` no longer scores on the Oregon image.
 
 **City data** (`data/cities.js`): 62 hardcoded US cities with `{name, lat, lng, state}`. Coordinates are approximate city centers. This is the authoritative city list — add/remove entries here to change the City Quiz pool.
 
@@ -244,11 +274,25 @@ custom `getSuggestions`), the floating `FeedbackBubble` / hint-bubble behavior, 
 four modes. Before it existed each rendered a bare `<img>` with no `onError`: the images
 were ~1.2 MB each at the time (~0.5 MB now), so a slow connection showed an unexplained
 blank square and a 404 showed a broken-image glyph with no way to recover. It is inline-styled rather than adding to
-`App.css`.
+`App.css`. Its Retry button carries `.sat-retry`, which `useAdvanceOnDismiss` treats as
+owning its own click, so retrying while the feedback bubble is up doesn't also advance.
+
+**Google attribution.** Every satellite image came from the Google Maps Static API, so
+`SatelliteImage` draws an `Imagery © Google` label top-left on every loaded image, and the
+results screen adds `Satellite imagery © Google` under a review that has thumbnails. Most
+files carry Google's own credit band along the bottom, but the four crops lost it and the
+band is unreadable at phone size and in the ~58px thumbnails. Note that the Google Maps
+Platform terms generally restrict storing its imagery at all; the credit is the minimum,
+not a licence. `docs/GOAL.md` tracks the open decision on the image source.
 
 Note the two *airport/city* variants use **different** region groupings: the Airport quiz
 uses Census-style regions; the City quiz uses a finer set (West Coast, Southwest, Mountain
-West, Midwest, South, Southeast, Northeast, Non-contiguous).
+West, Midwest, South, Southeast, Northeast, non-contiguous US). Both put Alaska and
+Hawaii in `non-contiguous US`, phrased to read as "This city is in the
+non-contiguous US." (the Airport quiz used to file them under West Coast). DC is in
+the City quiz's Northeast, and its second hint is "not in any state", because its
+"state" is the answer itself. Both look states up through `stateAbbreviations` in
+`data/states.js`, which includes DC.
 
 ## Data Files
 
@@ -258,8 +302,8 @@ West, Midwest, South, Southeast, Northeast, Non-contiguous).
   `AMBIGUOUS_CITIES` (derived from the data, not hand-listed: Chicago, Houston, Washington,
   New York, Dallas) blocks the bare city name for the 10 airports that share one, since
   `Chicago` used to score on both ORD and MDW — two different dots, one accepted answer.
-  Each airport's own code and distinctive name still work. Same approach as
-  `WorldAirportSatelliteQuiz.jsx`.
+  Each airport's own code and short name still work (see Airport answers above).
+  The same rule applies in all three airport pools.
 - **`src/data/satellite-airports.js`** — 28 airports curated for visual distinctiveness,
   the pool for the Airport Satellite Quiz.
 - **`src/data/satellite-cities.js`** — all 62 cities (mirrors `cities.js`, fields
@@ -288,7 +332,8 @@ entry claimed `state: "Virginia"`, so the blank-map dot and its level-2 hint dis
 It is now `-77.0402`, verified inside Virginia. Eight world entries (Hong Kong, Dubai,
 Doha, Panama City, HKG, DPS, DOH, GIG) fall outside their country's 110m polygon but are
 0.2–4 km from mapped coastline — harbour crops and reclaimed-land airfields the coarse
-coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
+coastline misses, not errors. **`npm run check` re-runs the US point-in-state sweep**
+(the world one is not scripted, because of those eight).
 
 ## Satellite Imagery
 
@@ -369,8 +414,13 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   mount. And a `loader.load` in flight at unmount would write into the orphaned `textures`
   object and call `needsUpdate` on a disposed material, so a `disposed` flag set first in
   cleanup makes both the success and fallback callbacks bail (disposing the orphan texture).
-  Planet switching itself does not leak — `textures` caches by id — but visiting all five
-  holds ~30–40 MB of GPU texture.
+  Planet switching itself does not leak — `textures` caches by id, and a planet whose
+  download is still running doesn't start a second one — but visiting all five holds
+  ~30–40 MB of GPU texture. A late download is only applied if its planet is still the
+  current one (`currentId`); without that, clicking through quickly on a slow line could
+  leave Mars on the sphere while the Neptune dot was lit. Cleanup also calls
+  `renderer.forceContextLoss()`, because `dispose()` doesn't release the WebGL context
+  and Chrome starts evicting old ones after ~16 Home ↔ quiz trips.
 - **Globe textures are self-hosted** under `public/textures/` (four planet photos +
   Saturn's ring slice, 996 kB total), built from `TEX_BASE` off `import.meta.env.BASE_URL`.
   They used to be hotlinked from Wikimedia Commons, which made a core piece of the home
@@ -442,7 +492,8 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
   emitted `-webkit-` prefix. The default esbuild minifier collapsed the hand-written pair
   to just `-webkit-`, breaking the blur in Firefox.
 - **CI** (`.github/workflows/ci.yml`): Node 24, `npm install --no-audit --no-fund` →
-  `npm run lint` → `npm run build`, on push and PR to `main`, with no `continue-on-error`.
+  `npm run lint` → `npm run check` → `npm run build`, on push and PR to `main`, with no
+  `continue-on-error`.
   **`npm run lint` must stay at zero errors** — the gate exists because it was previously
   running nowhere. No deploy job; publishing is a manual `npm run deploy`.
 - **CI installs with `npm install`, not `npm ci` — leave it that way.** `npm ci` demands

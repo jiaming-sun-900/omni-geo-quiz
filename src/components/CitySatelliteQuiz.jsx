@@ -4,8 +4,9 @@ import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
 import SatelliteImage from "./SatelliteImage";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
+import { stateAbbreviations } from "../data/states";
 import { satelliteCities } from "../data/satellite-cities";
-import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { cityAbbreviations, matchCity } from "../data/cities";
 
 const TOTAL_ROUNDS = 10;
 
@@ -23,60 +24,22 @@ const REGION_BY_ABBR = {};
     Midwest: ["IL", "IN", "OH", "MI", "WI", "MN", "IA", "MO", "ND", "SD", "NE", "KS"],
     South: ["TX", "OK", "AR", "LA", "MS", "AL", "TN", "KY", "WV"],
     Southeast: ["FL", "GA", "SC", "NC", "VA"],
-    Northeast: ["ME", "NH", "VT", "MA", "RI", "CT", "NY", "NJ", "PA", "MD", "DE"],
-    "Non-contiguous": ["AK", "HI"],
+    // DC sits with Maryland. Without an entry here its region hint fell back to
+    // "This city is in District of Columbia.", which named the answer.
+    Northeast: ["ME", "NH", "VT", "MA", "RI", "CT", "NY", "NJ", "PA", "MD", "DE", "DC"],
+    // Phrased to fit "This city is in the …".
+    "non-contiguous US": ["AK", "HI"],
   };
   for (const [region, abbrs] of Object.entries(regions)) {
     for (const abbr of abbrs) REGION_BY_ABBR[abbr] = region;
   }
 }
 
-// satellite-cities.js stores full state names; map them to abbreviations so we
-// can look up the region. (Washington DC has no abbreviation here, so its hint
-// falls back to the state name.)
-const STATE_NAME_TO_ABBR = {
-  Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA",
-  Colorado: "CO", Connecticut: "CT", Delaware: "DE", Florida: "FL", Georgia: "GA",
-  Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA",
-  Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD",
-  Massachusetts: "MA", Michigan: "MI", Minnesota: "MN", Mississippi: "MS",
-  Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV",
-  "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
-  "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK",
-  Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC",
-  "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT", Vermont: "VT",
-  Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI",
-  Wyoming: "WY",
-};
-
+// The data stores full state names; stateAbbreviations maps them (and DC) to
+// the abbreviations the region table is keyed by.
 function regionForState(stateName) {
-  const abbr = STATE_NAME_TO_ABBR[stateName];
+  const abbr = stateAbbreviations[stateName];
   return REGION_BY_ABBR[abbr] || null;
-}
-
-// Common abbreviations the quiz accepts, keyed by city name. fuzzyMatch already
-// covers most of these against the city name, except "DC" (it maps DC to
-// "district of columbia", not "Washington DC"), so we check them explicitly.
-const CITY_ABBR = {
-  "New York": "NYC",
-  "New Orleans": "NOLA",
-  "Washington DC": "DC",
-  "San Francisco": "SF",
-  "Los Angeles": "LA",
-};
-
-// Accept the city name (case-insensitive, typo tolerant via fuzzy match) or one
-// of the common abbreviations above. The autocomplete fills "City, State", so a
-// trailing ", State" is stripped before matching.
-const ALL_CITY_NAMES = satelliteCities.map((c) => c.name);
-
-function matchCity(guess, city) {
-  const raw = guess.trim();
-  const cityPart = raw.includes(",") ? raw.slice(0, raw.indexOf(",")).trim() : raw;
-  const abbr = CITY_ABBR[city.name];
-  if (abbr && cityPart.toLowerCase() === abbr.toLowerCase()) return true;
-  if (fuzzyMatch(cityPart, city.name, ALL_CITY_NAMES)) return true;
-  return false;
 }
 
 // Suggestions matched on city name or its abbreviation, formatted "City, State".
@@ -90,7 +53,7 @@ function getSuggestions(query, limit = 10) {
   const contains = [];
   for (const c of satelliteCities) {
     const name = c.name.toLowerCase();
-    const abbr = CITY_ABBR[c.name]?.toLowerCase();
+    const abbr = cityAbbreviations[c.name]?.toLowerCase();
     if (name.startsWith(q) || abbr?.startsWith(q)) {
       starts.push(c);
     } else if (name.includes(q) || abbr?.includes(q)) {
@@ -103,26 +66,17 @@ function getSuggestions(query, limit = 10) {
   }));
 }
 
-function pickCity(usedIndices) {
-  const available = satelliteCities
+// `excludeIndex` is the city currently on screen. New Image passes it, so it
+// can neither hand back the image already showing nor (while unplayed entries
+// remain) one answered earlier in this game, which would then appear twice in
+// the end-of-game review.
+function pickCity(usedIndices, excludeIndex = -1) {
+  const selectable = satelliteCities
     .map((c, i) => ({ city: c, index: i }))
-    .filter(({ index }) => !usedIndices.has(index));
-  const pool =
-    available.length > 0
-      ? available
-      : satelliteCities.map((c, i) => ({ city: c, index: i }));
+    .filter(({ index }) => index !== excludeIndex);
+  const available = selectable.filter(({ index }) => !usedIndices.has(index));
+  const pool = available.length > 0 ? available : selectable;
   return pool[Math.floor(Math.random() * pool.length)];
-}
-
-// Pick a random city guaranteed to differ from the one currently shown. Used by
-// the "New Image" button, which doesn't touch the used-index set or the round.
-function pickDifferentCity(currentIndex) {
-  let pick;
-  do {
-    const i = Math.floor(Math.random() * satelliteCities.length);
-    pick = { city: satelliteCities[i], index: i };
-  } while (pick.index === currentIndex && satelliteCities.length > 1);
-  return pick;
 }
 
 function Game({ onHome, onFinish }) {
@@ -181,7 +135,7 @@ function Game({ onHome, onFinish }) {
   // score. Only the shown city and the hint state reset, so hints are fresh for
   // the new image. The guess input is keyed on current.index, so it clears too.
   const handleNewImage = () => {
-    setCurrent((cur) => pickDifferentCity(cur.index));
+    setCurrent(pickCity(usedIndices.current, current.index));
     setHintLevel(0);
     setHintOpen(false);
   };
@@ -207,10 +161,14 @@ function Game({ onHome, onFinish }) {
       ? `This city is in the ${region}.`
       : `This city is in ${c.state}.`;
   } else if (hintLevel === 2) {
+    // DC's "state" is the answer itself, so its second hint has to be a clue
+    // rather than the state name.
     hintText =
       c.name === "St. Louis"
         ? "This city is the home of the developer of this game 👨‍💻"
-        : `This city is in ${c.state}.`;
+        : c.state === "District of Columbia"
+          ? "This city is not in any state."
+          : `This city is in ${c.state}.`;
   }
 
   const reveal = `${c.name}, ${c.state}`;

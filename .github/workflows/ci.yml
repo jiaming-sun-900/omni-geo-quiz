@@ -7,7 +7,8 @@ on:
     branches: [main]
 
 # Deployment stays manual (`npm run deploy`, gh-pages -d dist). This workflow
-# only checks that what landed on main still lints and builds.
+# only checks that what landed on main still lints, passes the answer and data
+# sweep, and builds.
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -34,5 +35,9 @@ jobs:
       - run: npm install --no-audit --no-fund
 
       - run: npm run lint
+
+      # Cross-accept sweep over every quiz pool, plus point-in-state and image
+      # checks. See scripts/check-answers.js.
+      - run: npm run check
 
       - run: npm run build

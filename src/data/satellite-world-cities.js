@@ -1,3 +1,5 @@
+import { fuzzyMatch } from "../utils/fuzzyMatch";
+
 // City list for the World City Satellite Quiz (Mode IV). Mirrors the shape of
 // satellite-cities.js but for international cities, with fields the satellite
 // fetch + quiz need: name, lat, lng, country, region (continent), funFact, and
@@ -15,7 +17,7 @@
 // country suffix is on every entry for consistency with satellite-cities.js even
 // though this list has no name collisions today.
 export const satelliteWorldCities = [
-  // ---- Asia (16) ----
+  // ---- Asia (15) ----
   { name: "Beijing", lat: 39.9163, lng: 116.3972, country: "China", region: "Asia", funFact: "This city is home to the largest surviving ancient palace complex in the world.", imageFile: "Beijing_China.jpg" },
   { name: "Shanghai", lat: 31.2389, lng: 121.4900, country: "China", region: "Asia", funFact: "This is the country's largest financial center, with a river splitting the skyline into an old bund and a futuristic new district.", imageFile: "Shanghai_China.jpg" },
   { name: "Hong Kong", lat: 22.2880, lng: 114.1680, country: "China", region: "Asia", funFact: "A former British colony known for its skyscraper skyline rising on both sides of a deep natural harbor.", imageFile: "Hong_Kong_China.jpg" },
@@ -29,11 +31,10 @@ export const satelliteWorldCities = [
   { name: "Doha", lat: 25.3690, lng: 51.5510, country: "Qatar", region: "Asia", funFact: "The capital of a Gulf nation that hosted a recent FIFA World Cup.", imageFile: "Doha_Qatar.jpg" },
   { name: "Mumbai", lat: 18.9430, lng: 72.8230, country: "India", region: "Asia", funFact: "The center of the country's film industry, located on a peninsula along the coast.", imageFile: "Mumbai_India.jpg" }, // image is a 928px crop of the 1280px original, see the Satellite Imagery notes
   { name: "Agra", lat: 27.1751, lng: 78.0421, country: "India", region: "Asia", funFact: "Home to a white marble mausoleum built for a deceased queen, often called one of the new seven wonders of the world.", imageFile: "Agra_India.jpg" },
-  { name: "Istanbul", lat: 41.0250, lng: 28.9740, country: "Turkey", region: "Asia", funFact: "One of the few cities in the world that sits on two continents at once.", imageFile: "Istanbul_Turkey.jpg" },
   { name: "Hanoi", lat: 21.0287, lng: 105.8524, country: "Vietnam", region: "Asia", funFact: "This capital's old quarter wraps around a lake said to be home to a legendary giant turtle.", imageFile: "Hanoi_Vietnam.jpg" },
   { name: "Kuala Lumpur", lat: 3.1579, lng: 101.7116, country: "Malaysia", region: "Asia", funFact: "Home to twin towers that once held the record for the tallest buildings in the world, and still the tallest twin towers today.", imageFile: "Kuala_Lumpur_Malaysia.jpg" },
 
-  // ---- Europe (14) ----
+  // ---- Europe (15) ----
   { name: "Paris", lat: 48.8584, lng: 2.2945, country: "France", region: "Europe", funFact: "A tower built as a temporary structure for a World's Fair became this city's defining landmark.", imageFile: "Paris_France.jpg" },
   { name: "Venice", lat: 45.4380, lng: 12.3358, country: "Italy", region: "Europe", funFact: "An entire city built across more than a hundred small islands in a lagoon, with canals instead of streets.", imageFile: "Venice_Italy.jpg" },
   { name: "Rome", lat: 41.8902, lng: 12.4922, country: "Italy", region: "Europe", funFact: "Once the capital of an empire that lasted a thousand years, and still home to an independent papal state within its walls.", imageFile: "Rome_Italy.jpg" },
@@ -48,10 +49,11 @@ export const satelliteWorldCities = [
   { name: "Prague", lat: 50.0865, lng: 14.4114, country: "Czechia", region: "Europe", funFact: "An astronomical clock in the old town square has been telling time here since the medieval era.", imageFile: "Prague_Czechia.jpg" },
   { name: "Santorini", lat: 36.4150, lng: 25.4310, country: "Greece", region: "Europe", funFact: "A crescent-shaped island formed by a volcanic eruption, known for its white and blue buildings.", imageFile: "Santorini_Greece.jpg" },
   { name: "Reykjavik", lat: 64.1466, lng: -21.9426, country: "Iceland", region: "Europe", funFact: "One of the northernmost capitals of any sovereign country, heated almost entirely by geothermal energy.", imageFile: "Reykjavik_Iceland.jpg" },
+  { name: "Istanbul", lat: 41.0250, lng: 28.9740, country: "Turkey", region: "Europe", funFact: "One of the few cities in the world that sits on two continents at once.", imageFile: "Istanbul_Turkey.jpg" },
 
   // ---- North America (5, excluding the US) ----
   { name: "Vancouver", lat: 49.2900, lng: -123.1300, country: "Canada", region: "North America", funFact: "A port city surrounded by mountains on three sides and the sea on the fourth, regularly ranked among the world's most livable cities.", imageFile: "Vancouver_Canada.jpg" },
-  { name: "Toronto", lat: 43.6426, lng: -79.3871, country: "Canada", region: "North America", funFact: "Once home to the tallest freestanding structure in North America, sitting beside one of the Great Lakes.", imageFile: "Toronto_Canada.jpg" },
+  { name: "Toronto", lat: 43.6426, lng: -79.3871, country: "Canada", region: "North America", funFact: "Home to the tallest freestanding structure in the Western Hemisphere, sitting beside one of the Great Lakes.", imageFile: "Toronto_Canada.jpg" },
   { name: "Mexico City", lat: 19.4326, lng: -99.1332, country: "Mexico", region: "North America", funFact: "Built atop a drained lakebed, once the capital of an ancient empire.", imageFile: "Mexico_City_Mexico.jpg" },
   { name: "Havana", lat: 23.1450, lng: -82.3700, country: "Cuba", region: "North America", funFact: "A seaside city famous for its colorful vintage cars and colonial architecture.", imageFile: "Havana_Cuba.jpg" }, // image is a 860px crop of the 1280px original, see the Satellite Imagery notes
   { name: "Panama City", lat: 8.9430, lng: -79.5560, country: "Panama", region: "North America", funFact: "Located right beside a canal that connects the Pacific and Atlantic Oceans.", imageFile: "Panama_City_Panama.jpg" },
@@ -79,5 +81,27 @@ export const satelliteWorldCities = [
   { name: "Auckland", lat: -36.8485, lng: 174.7633, country: "New Zealand", region: "Oceania", funFact: "Built on a narrow isthmus between two harbors, with nearly fifty dormant volcanic cones within the city.", imageFile: "Auckland_New_Zealand.jpg" },
   { name: "Wellington", lat: -41.2865, lng: 174.7762, country: "New Zealand", region: "Oceania", funFact: "The southernmost national capital in the world, known for being very windy.", imageFile: "Wellington_New_Zealand.jpg" },
   { name: "Gold Coast", lat: -28.0023, lng: 153.4300, country: "Australia", region: "Oceania", funFact: "Famous for its long stretch of surf beaches, one of the most popular vacation destinations in its country.", imageFile: "Gold_Coast_Australia.jpg" },
-  { name: "Nadi", lat: -17.7730, lng: 177.3770, country: "Fiji", region: "Oceania", funFact: "An island nation in the South Pacific known for its coral reefs and resorts.", imageFile: "Nadi_Fiji.jpg" },
+  { name: "Nadi", lat: -17.7730, lng: 177.3770, country: "Fiji", region: "Oceania", funFact: "Most visitors to this South Pacific island nation arrive through this town's international airport.", imageFile: "Nadi_Fiji.jpg" },
 ];
+
+// Common abbreviations the quiz accepts, keyed by city name. Only abbreviations
+// in genuine common usage belong here; fuzzyMatch already handles typos and the
+// full names.
+export const worldCityAbbreviations = {
+  "Hong Kong": "HK",
+  "Kuala Lumpur": "KL",
+};
+
+const ALL_CITY_NAMES = satelliteWorldCities.map((c) => c.name);
+
+// Accept the city name (case-insensitive, typo tolerant via fuzzy match) or one
+// of the abbreviations above. Validation is on the city name only: every city
+// name is unique in this pool, so the ", Country" the autocomplete fills is
+// simply stripped.
+export function matchWorldCity(guess, city) {
+  const raw = guess.trim();
+  const cityPart = raw.includes(",") ? raw.slice(0, raw.indexOf(",")).trim() : raw;
+  const abbr = worldCityAbbreviations[city.name];
+  if (abbr && cityPart.toLowerCase() === abbr.toLowerCase()) return true;
+  return fuzzyMatch(cityPart, city.name, ALL_CITY_NAMES);
+}

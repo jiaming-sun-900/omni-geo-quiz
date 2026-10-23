@@ -130,6 +130,10 @@ export default function ResultsScreen({
               <ReviewRow key={index} item={item} />
             ))}
           </ul>
+          {/* The thumbnails are too small for Google's own credit band to read. */}
+          {review.some((r) => r.image) && (
+            <p className="review-credit">Satellite imagery © Google</p>
+          )}
         </div>
       )}
     </div>

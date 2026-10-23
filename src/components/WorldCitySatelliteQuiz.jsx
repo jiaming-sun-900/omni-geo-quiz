@@ -4,8 +4,11 @@ import FeedbackBubble from "./FeedbackBubble";
 import ResultsScreen from "./ResultsScreen";
 import SatelliteImage from "./SatelliteImage";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
-import { satelliteWorldCities } from "../data/satellite-world-cities";
-import { fuzzyMatch } from "../utils/fuzzyMatch";
+import {
+  satelliteWorldCities,
+  worldCityAbbreviations,
+  matchWorldCity,
+} from "../data/satellite-world-cities";
 
 const TOTAL_ROUNDS = 10;
 const HINT_MAX = 4;
@@ -13,29 +16,6 @@ const HINT_MAX = 4;
 // Satellite images live in public/satellite/world-cities/{imageFile} and are
 // served under the configured base path.
 const IMG_BASE = `${import.meta.env.BASE_URL}satellite/world-cities/`;
-
-// Common abbreviations the quiz accepts, keyed by city name. Only abbreviations
-// in genuine common usage belong here — fuzzyMatch already handles typos and the
-// full names.
-const CITY_ABBR = {
-  "Hong Kong": "HK",
-  "Kuala Lumpur": "KL",
-};
-
-// Accept the city name (case-insensitive, typo tolerant via fuzzy match) or one
-// of the common abbreviations above. Validation is on the city name only, not the
-// country. The autocomplete fills "City, Country", so a trailing ", Country" is
-// stripped before matching.
-const ALL_CITY_NAMES = satelliteWorldCities.map((c) => c.name);
-
-function matchCity(guess, city) {
-  const raw = guess.trim();
-  const cityPart = raw.includes(",") ? raw.slice(0, raw.indexOf(",")).trim() : raw;
-  const abbr = CITY_ABBR[city.name];
-  if (abbr && cityPart.toLowerCase() === abbr.toLowerCase()) return true;
-  if (fuzzyMatch(cityPart, city.name, ALL_CITY_NAMES)) return true;
-  return false;
-}
 
 // Suggestions matched on city name or its abbreviation, formatted "City, Country".
 // Matches that START with the query rank ahead of those that merely CONTAIN it.
@@ -48,7 +28,7 @@ function getSuggestions(query, limit = 10) {
   const contains = [];
   for (const c of satelliteWorldCities) {
     const name = c.name.toLowerCase();
-    const abbr = CITY_ABBR[c.name]?.toLowerCase();
+    const abbr = worldCityAbbreviations[c.name]?.toLowerCase();
     if (name.startsWith(q) || abbr?.startsWith(q)) {
       starts.push(c);
     } else if (name.includes(q) || abbr?.includes(q)) {
@@ -61,26 +41,17 @@ function getSuggestions(query, limit = 10) {
   }));
 }
 
-function pickCity(usedIndices) {
-  const available = satelliteWorldCities
+// `excludeIndex` is the city currently on screen. New Image passes it, so it
+// can neither hand back the image already showing nor (while unplayed entries
+// remain) one answered earlier in this game, which would then appear twice in
+// the end-of-game review.
+function pickCity(usedIndices, excludeIndex = -1) {
+  const selectable = satelliteWorldCities
     .map((c, i) => ({ city: c, index: i }))
-    .filter(({ index }) => !usedIndices.has(index));
-  const pool =
-    available.length > 0
-      ? available
-      : satelliteWorldCities.map((c, i) => ({ city: c, index: i }));
+    .filter(({ index }) => index !== excludeIndex);
+  const available = selectable.filter(({ index }) => !usedIndices.has(index));
+  const pool = available.length > 0 ? available : selectable;
   return pool[Math.floor(Math.random() * pool.length)];
-}
-
-// Pick a random city guaranteed to differ from the one currently shown. Used by
-// the "New Image" button, which doesn't touch the used-index set or the round.
-function pickDifferentCity(currentIndex) {
-  let pick;
-  do {
-    const i = Math.floor(Math.random() * satelliteWorldCities.length);
-    pick = { city: satelliteWorldCities[i], index: i };
-  } while (pick.index === currentIndex && satelliteWorldCities.length > 1);
-  return pick;
 }
 
 // First letter of the city's primary name. Multi-word names use the first
@@ -107,7 +78,7 @@ function Game({ onHome, onFinish }) {
   const reviewRef = useRef([]);
 
   const handleGuess = (guess) => {
-    const correct = matchCity(guess, current.city);
+    const correct = matchWorldCity(guess, current.city);
     if (correct) {
       const next = score + 1;
       setScore(next);
@@ -148,7 +119,7 @@ function Game({ onHome, onFinish }) {
   // score. Only the shown city and the hint state reset, so hints are fresh for
   // the new image. The guess input is keyed on current.index, so it clears too.
   const handleNewImage = () => {
-    setCurrent((cur) => pickDifferentCity(cur.index));
+    setCurrent(pickCity(usedIndices.current, current.index));
     setHintLevel(0);
     setHintOpen(false);
   };

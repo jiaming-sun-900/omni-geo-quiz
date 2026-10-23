@@ -1083,6 +1083,13 @@
   color: #6E6E7A;
 }
 
+.review-credit {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #6E6E7A;
+  text-align: right;
+}
+
 .review-list {
   list-style: none;
   margin: 0;

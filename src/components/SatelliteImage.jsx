@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 // The satellite image plus its loading and error states, shared by the four
-// satellite modes. The files are ~1.2 MB each, so without this a slow
+// satellite modes. The files are ~0.5 MB each, so without this a slow
 // connection showed an unexplained blank square for seconds, and a missing file
 // showed a broken-image glyph with no way to recover.
 //
@@ -21,6 +21,25 @@ const OVERLAY = {
   background: "#FAF7F4",
   textAlign: "center",
   fontWeight: 600,
+};
+
+// Every image came from the Google Maps Static API, so Google has to be
+// credited wherever one is shown. Most files carry Google's own credit band
+// along the bottom edge, but the four crops (Mumbai, Havana, Nairobi, KUL) lost
+// it, and the band is unreadable at phone size, so the credit is drawn here,
+// top-left, clear of the north arrow in the opposite corner.
+const CREDIT = {
+  position: "absolute",
+  top: 6,
+  left: 6,
+  padding: "1px 6px",
+  borderRadius: 4,
+  background: "rgba(250, 247, 244, 0.85)",
+  color: "#1a1a1a",
+  fontSize: "0.65rem",
+  fontWeight: 600,
+  lineHeight: 1.5,
+  pointerEvents: "none",
 };
 
 export default function SatelliteImage({ src, alt }) {
@@ -46,6 +65,7 @@ export default function SatelliteImage({ src, alt }) {
         // the browser to keep loading it.
         style={status === "ready" ? undefined : { visibility: "hidden" }}
       />
+      {status === "ready" && <span style={CREDIT}>Imagery © Google</span>}
       {status === "loading" && (
         <div style={OVERLAY} role="status">
           Loading satellite image…
@@ -54,7 +74,7 @@ export default function SatelliteImage({ src, alt }) {
       {status === "error" && (
         <div style={OVERLAY} role="alert">
           <span>This satellite image failed to load.</span>
-          <button type="button" className="btn" onClick={retry}>
+          <button type="button" className="btn sat-retry" onClick={retry}>
             Retry
           </button>
         </div>

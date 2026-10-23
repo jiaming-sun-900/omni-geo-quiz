@@ -1,3 +1,6 @@
+import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { matchesState } from "./states";
+
 export const cities = [
   { name: "San Francisco", lat: 37.77, lng: -122.45, state: "California" },
   { name: "Los Angeles", lat: 34.11, lng: -118.41, state: "California" },
@@ -75,6 +78,21 @@ export const cityAbbreviations = {
   "San Francisco": "SF",
   "New Orleans": "NOLA",
 };
+
+// The answer check for both City quizzes. Accepts the city name (fuzzy) or its
+// abbreviation above. The satellite autocomplete fills "City, State"; when a
+// state is given it has to be the right one, or picking "Portland, Maine"
+// would score for Portland, Oregon (and vice versa).
+export function matchCity(guess, city) {
+  const raw = guess.trim();
+  const comma = raw.indexOf(",");
+  const cityPart = comma === -1 ? raw : raw.slice(0, comma).trim();
+  const statePart = comma === -1 ? "" : raw.slice(comma + 1).trim();
+  if (statePart && !matchesState(statePart, city.state)) return false;
+  const abbr = cityAbbreviations[city.name];
+  if (abbr && cityPart.toLowerCase() === abbr.toLowerCase()) return true;
+  return fuzzyMatch(cityPart, city.name, allCityNames);
+}
 
 // City names that appear more than once in the list — these get a state suffix in the dropdown.
 const duplicateCityNames = new Set(

@@ -15,7 +15,7 @@
 // imageFile is the IATA code + .jpg (HKG.jpg, LHR.jpg). IATA codes are globally
 // unique, so no disambiguating suffix is needed.
 export const satelliteWorldAirports = [
-  // ---- Asia (23) ----
+  // ---- Asia (22) ----
   { name: "Beijing Capital International", iata: "PEK", city: "Beijing", country: "China", region: "Asia", lat: 40.0725, lng: 116.5975, imageFile: "PEK.jpg" },
   { name: "Beijing Daxing International", iata: "PKX", city: "Beijing", country: "China", region: "Asia", lat: 39.5093, lng: 116.4108, imageFile: "PKX.jpg" },
   { name: "Shanghai Pudong International", iata: "PVG", city: "Shanghai", country: "China", region: "Asia", lat: 31.1443, lng: 121.8083, imageFile: "PVG.jpg" },
@@ -37,10 +37,9 @@ export const satelliteWorldAirports = [
   { name: "Dubai International", iata: "DXB", city: "Dubai", country: "UAE", region: "Asia", lat: 25.2528, lng: 55.3644, imageFile: "DXB.jpg" },
   { name: "Abu Dhabi International", iata: "AUH", city: "Abu Dhabi", country: "UAE", region: "Asia", lat: 24.4330, lng: 54.6511, imageFile: "AUH.jpg" },
   { name: "Hamad International", iata: "DOH", city: "Doha", country: "Qatar", region: "Asia", lat: 25.2731, lng: 51.6081, imageFile: "DOH.jpg" }, // crop: reclamation jutting into the gulf
-  { name: "Istanbul Airport", iata: "IST", city: "Istanbul", country: "Turkey", region: "Asia", lat: 41.2619, lng: 28.7414, imageFile: "IST.jpg" },
   { name: "Indira Gandhi International", iata: "DEL", city: "Delhi", country: "India", region: "Asia", lat: 28.5562, lng: 77.1000, imageFile: "DEL.jpg" },
 
-  // ---- Europe (15) ----
+  // ---- Europe (16) ----
   { name: "London Heathrow", iata: "LHR", city: "London", country: "UK", region: "Europe", lat: 51.4700, lng: -0.4543, imageFile: "LHR.jpg" },
   { name: "London Gatwick", iata: "LGW", city: "London", country: "UK", region: "Europe", lat: 51.1537, lng: -0.1821, imageFile: "LGW.jpg" },
   { name: "Paris Charles de Gaulle", iata: "CDG", city: "Paris", country: "France", region: "Europe", lat: 49.0097, lng: 2.5479, imageFile: "CDG.jpg" },
@@ -56,6 +55,7 @@ export const satelliteWorldAirports = [
   { name: "Athens International", iata: "ATH", city: "Athens", country: "Greece", region: "Europe", lat: 37.9364, lng: 23.9445, imageFile: "ATH.jpg" },
   { name: "Keflavik International", iata: "KEF", city: "Reykjavik", country: "Iceland", region: "Europe", lat: 63.9850, lng: -22.6056, imageFile: "KEF.jpg" }, // high-latitude image quality note
   { name: "Helsinki Vantaa", iata: "HEL", city: "Helsinki", country: "Finland", region: "Europe", lat: 60.3172, lng: 24.9633, imageFile: "HEL.jpg" },
+  { name: "Istanbul Airport", iata: "IST", city: "Istanbul", country: "Turkey", region: "Europe", lat: 41.2619, lng: 28.7414, imageFile: "IST.jpg" },
 
   // ---- North America (6, excluding the US) ----
   { name: "Toronto Pearson", iata: "YYZ", city: "Toronto", country: "Canada", region: "North America", lat: 43.6777, lng: -79.6248, imageFile: "YYZ.jpg" },

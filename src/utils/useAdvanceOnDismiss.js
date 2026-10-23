@@ -5,7 +5,8 @@ import { useEffect, useRef } from "react";
 // toggles, on the header boxes (Shuffle / New Image) or on the Home button used
 // to do its own job AND advance the round in the same gesture, which silently
 // burned a round whenever you flipped an overlay to double-check an answer.
-const OWN_CLICK = ".sq-toggles, .state-quiz-header, .sq-bottom-left";
+// Retry on a failed satellite image is the same case.
+const OWN_CLICK = ".sq-toggles, .state-quiz-header, .sq-bottom-left, .sat-retry";
 
 // While the feedback bubble is up, the next Enter press or click advances the
 // round (or finishes the game).

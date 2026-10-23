@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 
 // The globe drags in Three.js, OrbitControls, d3-geo, topojson-client and the
-// world atlas — roughly three quarters of what used to be the entry bundle, and
-// none of it is needed by a player who goes straight into a satellite mode. It
-// loads on its own chunk instead, behind the placeholder below.
+// world atlas, roughly three quarters of what used to be the entry bundle. Every
+// visitor lands here, so nearly everyone downloads it anyway; splitting it buys
+// time-to-paint, not bytes: the title and menu render without waiting on it,
+// behind the placeholder below.
 const Globe = lazy(() => import("./Globe"));
 
 // Stand-in shown while that chunk is in flight. It reuses the real widget's

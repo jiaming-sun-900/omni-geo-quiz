@@ -1,4 +1,4 @@
-import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { makeAirportMatcher } from "../utils/airportMatch";
 
 export const airports = [
   // United Airlines hubs
@@ -108,35 +108,6 @@ export function getAirportSuggestions(query, limit = 10) {
   }));
 }
 
-// Every valid answer of each kind, handed to the fuzzy matcher so it can reject
-// a guess that exactly names a different airport instead of treating it as a
-// typo of this one.
-const AIRPORT_ANSWERS = [...airports.map((a) => a.name), ...airports.map((a) => a.code)];
-const AIRPORT_CITIES = [...new Set(airports.map((a) => a.city))];
-
-// Cities with more than one airport in the pool (Chicago ORD/MDW, Houston
-// IAH/HOU, Washington IAD/DCA, New York JFK/LGA, Dallas DFW/DAL). The city name
-// alone cannot identify which dot is on the map, so it is not accepted for
-// these — the player gives the IATA code or the airport name, both of which the
-// autocomplete offers. Derived from the data so it stays correct if the roster
-// changes. Same rule the World Airport Quiz already applies.
-const AMBIGUOUS_CITIES = (() => {
-  const counts = new Map();
-  for (const a of airports) counts.set(a.city, (counts.get(a.city) || 0) + 1);
-  return new Set([...counts].filter(([, n]) => n > 1).map(([city]) => city));
-})();
-
-// Accept the exact IATA code, the full airport name, or — when it identifies a
-// single airport — the city name, both names via the shared fuzzy matcher
-// (case-insensitive, typo tolerant).
-export function matchAirport(guess, airport) {
-  if (guess.trim().toLowerCase() === airport.code.toLowerCase()) return true;
-  if (fuzzyMatch(guess, airport.name, AIRPORT_ANSWERS)) return true;
-  if (
-    !AMBIGUOUS_CITIES.has(airport.city) &&
-    fuzzyMatch(guess, airport.city, AIRPORT_CITIES)
-  ) {
-    return true;
-  }
-  return false;
-}
+// Code, name, short name ("Midway", "Love Field", "Hobby") or, where it names
+// a single airport, the city. See utils/airportMatch.js.
+export const matchAirport = makeAirportMatcher(airports, "code");

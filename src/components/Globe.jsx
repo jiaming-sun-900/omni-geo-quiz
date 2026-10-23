@@ -265,7 +265,17 @@ export default function Globe() {
       () => {}
     );
 
+    // The planet the user last picked, and the photo downloads still running.
+    // A download can finish after the user has moved on (jupiter.jpg is ~0.5 MB,
+    // saturn.jpg 60 kB, so Mars → Jupiter → Saturn on a slow line used to end on
+    // Jupiter), so a texture is only put on the sphere if its planet is still
+    // the current one. It is cached either way, and a planet whose download is
+    // already running doesn't start a second one, whose texture would leak.
+    let currentId = null;
+    const inFlight = new Set();
+
     const setPlanet = (id) => {
+      currentId = id;
       ring.visible = id === "saturn";
       const planet = PLANETS.find((p) => p.id === id);
       const apply = (tex) => {
@@ -273,14 +283,13 @@ export default function Globe() {
         sphere.material.color.set("#ffffff");
         sphere.material.needsUpdate = true;
       };
-      // The photo textures are fetched from Wikimedia at click time, so they can
-      // fail: offline, a blocked network, or a Commons file that got renamed.
+      // A photo can fail to load: offline, or a file missing from the deploy.
       // Without this the sphere kept the PREVIOUS planet's texture while the
       // label read the new one, so a failed Mars looked exactly like Earth. Fall
       // back to the planet's flat base colour instead: plainly not a photo, but
       // at least it is the right planet.
       const applyFallbackColour = () => {
-        if (disposed) return;
+        if (disposed || currentId !== id) return;
         sphere.material.map = null;
         sphere.material.color.set(planet?.color || "#888888");
         sphere.material.needsUpdate = true;
@@ -290,9 +299,15 @@ export default function Globe() {
         return;
       }
       if (!planet?.url) return;
+      // Clear the outgoing planet's photo right away so the wrong texture is
+      // never shown while the new one is in flight.
+      applyFallbackColour();
+      if (inFlight.has(id)) return;
+      inFlight.add(id);
       loader.load(
         planet.url,
         (tex) => {
+          inFlight.delete(id);
           if (disposed) {
             tex.dispose();
             return;
@@ -302,14 +317,14 @@ export default function Globe() {
           tex.wrapS = THREE.RepeatWrapping;
           tex.wrapT = THREE.RepeatWrapping;
           textures[id] = tex;
-          apply(tex);
+          if (currentId === id) apply(tex);
         },
         undefined,
-        applyFallbackColour
+        () => {
+          inFlight.delete(id);
+          applyFallbackColour();
+        }
       );
-      // Clear the outgoing planet's photo right away so the wrong texture is
-      // never shown while the new one is in flight.
-      applyFallbackColour();
     };
 
     // Drag to rotate freely; zoom and pan disabled. Auto-rotation is handled
@@ -473,6 +488,9 @@ export default function Globe() {
       renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       controls.dispose();
       renderer.dispose();
+      // dispose() frees Three's GPU resources but not the WebGL context itself;
+      // after ~16 Home ↔ quiz round trips Chrome starts evicting old contexts.
+      renderer.forceContextLoss();
       Object.values(textures).forEach((t) => t.dispose());
       ringTexture?.dispose();
       sphere.geometry.dispose();
