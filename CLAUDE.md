@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Read `docs/GOAL.md` first.** It holds the agreed product goal, the milestones and
+their progress table; every change should advance one of its completion criteria.
+
 ## Project
 
 Omni Geo Quiz — a React + D3.js quiz app testing geography knowledge through
