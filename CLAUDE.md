@@ -457,6 +457,11 @@ coastline misses, not errors. **Re-run the sweep after editing any coordinate.**
 The established visual language across all screens. New UI should conform to it.
 
 - **Background**: `#FAF7F4` (warm off-white) throughout every screen.
+- **Favicon** (`public/favicon.svg`) is **generated** by `node scripts/build-favicon.js` from
+  the same `world-atlas` land and the same ocean/land/coast colours as the globe texture,
+  with the hard offset shadow; edit the script, not the SVG. It is tuned for 16px: no
+  plate, no graticule, islands too small to show are dropped, and the ink swaps to
+  off-white under `prefers-color-scheme: dark` so it survives a dark tab bar.
 - **Buttons** (all interactive buttons): white background, solid black border, hard
   offset shadow `3px 3px 0px #111` (no blur), `border-radius: 12px`. On hover/press the
   button shifts 2px down-right and the shadow reduces, giving a physical press feel.
