@@ -10,23 +10,28 @@
     />
     <meta name="theme-color" content="#FAF7F4" />
     <link rel="icon" type="image/svg+xml" href="/omni-geo-quiz/favicon.svg" />
+    <link rel="apple-touch-icon" href="/omni-geo-quiz/apple-touch-icon.png" />
 
     <title>World Airport Quiz: South America · Omni Geo Quiz</title>
     <meta
       name="description"
-      content="A geography quiz built with React, D3 and Three.js: find US states, cities and airports on a blank map, or name them from satellite imagery. Five modes, ten rounds each."
+      content="A free geography game: name cities and airports from satellite images, find US states, cities and airports on a blank map, and play the Daily Challenge."
     />
 
-    <!-- Link previews (Open Graph / Twitter). No og:image: the only images in
-         the project are 1280px satellite tiles, which make a poor thumbnail. -->
+    <!-- Link previews (Open Graph / Twitter). og.png comes from
+         scripts/build-share-images.js. Crawlers don't run the app, so every
+         URL here is absolute; the build gives each page its own og:title and
+         og:url (see routePages in vite.config.js). -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Omni Geo Quiz" />
     <meta property="og:title" content="World Airport Quiz: South America · Omni Geo Quiz" />
-    <meta
-      property="og:description"
-      content="Find US states, cities and airports on a blank map, or name them from satellite imagery."
-    />
+    <meta property="og:description" content="Name cities and airports from above. A new Daily Challenge every day." />
     <meta property="og:url" content="https://jiaming-sun-900.github.io/omni-geo-quiz/world-airport-south-america/" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://jiaming-sun-900.github.io/omni-geo-quiz/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Omni Geo Quiz: a globe and a Daily Challenge score" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script type="module" crossorigin src="/omni-geo-quiz/assets/index-DX6BHJ-h.js"></script>
     <link rel="stylesheet" crossorigin href="/omni-geo-quiz/assets/index-BGaarVdE.css">
   </head>
