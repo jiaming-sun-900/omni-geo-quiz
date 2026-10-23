@@ -37,6 +37,7 @@ npm run dev      # Vite dev server, served under the /omni-geo-quiz/ base path
 npm run build    # production build to dist/
 npm run preview  # serve the production build locally
 npm run lint
+npm run check    # answer-matching sweep over every quiz pool, plus data checks
 npm run deploy   # publish dist/ to the gh-pages branch
 ```
 
@@ -47,25 +48,31 @@ repository name has to match that path.
 
 ```
 src/
-  App.jsx                 mode switch; every quiz mode is code-split (React.lazy)
+  App.jsx                 route → screen; every mode is code-split (React.lazy)
+  routes.js  router.js    the page table and a small History API router
+  modes/                  one plain-JS definition per mode: pool, matcher, hints
+  quiz/
+    QuizScreen.jsx         a mode's game, then its results (Play again remounts)
+    QuizGame.jsx           the shared engine that runs any mode's ten rounds
+    MapStage.jsx  SatelliteStage.jsx   what a round shows
   components/
     HomeScreen.jsx         menu + sub-mode modal
     Globe.jsx              Three.js globe, cycles through five planets
     USMap.jsx              shared Albers USA map: state fills, national outline, dot
-    StateQuiz.jsx  CityQuiz.jsx  AirportQuiz.jsx            map-based modes
-    CitySatelliteQuiz.jsx  AirportSatelliteQuiz.jsx         US satellite modes
-    WorldCitySatelliteQuiz.jsx  WorldAirportSatelliteQuiz.jsx
     ResultsScreen.jsx      score + end-of-game review
     *GuessInput.jsx        the three autocomplete answer fields
   data/                    the quiz pools (plain JS arrays) and US geometry
-  utils/                   fuzzy matching, random-point-in-state, review links
+  utils/                   fuzzy and airport matching, random-point-in-state, review links
 public/satellite/          the satellite imagery, by target
-scripts/fetch-satellite.js downloads that imagery from the Google Static Maps API
+scripts/
+  check-answers.js         npm run check: cross-accept sweep over every pool, data checks
+  fetch-satellite.js       downloads the imagery from the Google Static Maps API
+  build-favicon.js         generates public/favicon.svg
 ```
 
-Each quiz follows the same shape: a wrapper component holds `gameKey` and the
-final result, and an inner `Game` runs the ten rounds. Bumping `gameKey`
-remounts `Game` for a clean restart.
+Every page has its own URL (`/omni-geo-quiz/world-airport` and so on). At build
+time `vite.config.js` writes a copy of `index.html` into each route's folder, so
+those links also work on GitHub Pages.
 
 `CLAUDE.md` documents the architecture, the design system and the responsive
 layout in detail, including several minifier and CSS pitfalls worth reading

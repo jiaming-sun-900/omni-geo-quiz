@@ -19,6 +19,8 @@ interactive Three.js globe.
 - `npm run build` — production build to `dist/`
 - `npm run preview` — preview production build locally
 - `npm run lint` — ESLint; **must stay at zero errors**, CI fails the build otherwise
+- `npm run check` — `scripts/check-answers.js`: the cross-accept sweep over every quiz
+  pool plus data checks; also in CI
 - `npm run deploy` — `gh-pages -d dist`; publishes the **current `dist/`**, so run
   `npm run build` first or you will re-publish a stale one. Deployment is manual and CI
   does not do it (see CI, below).
@@ -33,23 +35,51 @@ interactive Three.js globe.
 
 ## Architecture
 
-**App.jsx** manages a single `mode` state (`null` | `"state"` | `"city"` |
-`"airport"` | `"airport-satellite"` | `"city-satellite"` |
-`"world-city-satellite"` | `"world-airport-satellite"`) to switch between
-HomeScreen and the quiz components, which live in a `QUIZZES` lookup keyed by
-mode.
+**Every page has a URL.** `src/routes.js` is the one table of pages (slug +
+title): `""` (home), `us-state`, `us-city`, `us-city-satellite`, `us-airport`,
+`us-airport-satellite`, `world-city`, `world-airport`, under the
+`/omni-geo-quiz/` base. `src/router.js` is a ~40-line History API router
+(`useRoute`, `navigate`, `setTitleFor`); there are eight flat pages and no
+parameters, so no router library. Browser Back works, and the tab title follows
+the page.
 
-**Code splitting.** Every quiz mode is a `React.lazy` import behind one
-`<Suspense>` with the `.mode-loading` fallback, and **Globe is lazy too**, loaded
-inside HomeScreen behind its own `<Suspense>`. Adding a mode means adding a
-`lazy()` line and a `QUIZZES` entry, nothing else.
+**Deep links on GitHub Pages.** Pages serves files, so `/omni-geo-quiz/world-airport`
+would 404. The `routePages` plugin in `vite.config.js` writes a copy of
+`index.html` into `dist/<slug>/index.html` for every route after the build, each
+with its own `<title>`, `og:title` and `og:url` (which is what a link preview
+reads, since crawlers don't run the app), plus a `404.html` copy that catches any
+other path and lets the router show the home screen. Asset URLs in `index.html`
+carry the base, so one file works at any depth. Pages redirects a bare folder URL
+to the trailing-slash form; the router strips slashes at both ends, so both match.
+**Adding a page means adding it to `ROUTES`**, or its deep link will 404.
 
-Current split: entry **197 kB** (62 kB gzip), `Globe` **647 kB** (178 kB gzip),
-`USMap` (us-atlas TopoJSON) 179 kB, each quiz 4–16 kB.
+**Modes are data, and one engine runs them all.** Each mode is a plain-JS
+definition in `src/modes/` (`usState.js`, `usCity.js`, `usCitySatellite.js`,
+`usAirport.js`, `usAirportSatellite.js`, `worldCity.js`, `worldAirport.js`): its
+pool, `prepare` (the State Quiz turns a state into a random point inside it),
+`Stage` (`quiz/MapStage.jsx` or `quiz/SatelliteStage.jsx`), what the stage draws,
+the prompt, which input (`state` | `city` | `search`), `hints` (functions; a hint
+is a string or `{ lead, items }` for a list), `match`, `reveal` and `review`. The
+full contract is the comment at the top of `src/quiz/QuizGame.jsx`, the engine.
+These used to be seven near-identical components of 230–330 lines each; the
+engine now holds the round logic once. **Adding a mode means writing one
+definition, adding its loader to `MODES` in `App.jsx` and its slug to `ROUTES`.**
+A definition is plain JS on purpose: `scripts/check-answers.js` loads them through
+Vite's `runnerImport` and sweeps each mode's real `match`.
+
+**Code splitting.** `App.jsx` gives each mode one `React.lazy` component that loads
+the definition and `quiz/QuizScreen` together, behind one `<Suspense>` with the
+`.mode-loading` fallback, and **Globe is lazy too**, loaded inside HomeScreen behind
+its own `<Suspense>`. The definition imports its stage, so a map mode pulls in
+`MapStage` (USMap + the us-atlas TopoJSON) with no second round trip.
+
+Current split: entry **199 kB** (63 kB gzip), `Globe` **648 kB** (178 kB gzip),
+`MapStage` (USMap + us-atlas TopoJSON) 180 kB, the shared engine (`QuizScreen`)
+13 kB, each mode definition 0.4–12 kB.
 
 **Be precise about what splitting Globe buys, because this paragraph has twice
-claimed more than it delivers.** There is no router: every visitor lands on
-HomeScreen, HomeScreen mounts `<Globe>`, so *almost everyone downloads the Globe
+claimed more than it delivers.** Nearly every visitor lands on
+HomeScreen (deep links to a mode are new and still rare), HomeScreen mounts `<Globe>`, so *almost everyone downloads the Globe
 chunk anyway*. The win is **time-to-paint, not bytes** — the title and the five
 menu rows render immediately instead of waiting on Three.js to download and
 parse. Don't re-justify it as "satellite players skip it"; they don't.
@@ -106,25 +136,32 @@ a fixed viewport cause **zero** redraws, and six distinct widths cause exactly s
 `states` (GeoJSON features excluding only the territories AS/GU/MP/PR/VI —
 **Alaska and Hawaii are kept**, since geoAlbersUsa draws them in the bottom-left
 insets and they are fair quiz targets). It is its own module because a file that
-exports both a component and plain data breaks Vite's fast refresh. StateQuiz
-imports `states` from there and filters out the District of Columbia (FIPS `11`)
+exports both a component and plain data breaks Vite's fast refresh. The State
+Quiz definition imports `states` from there and filters out the District of Columbia (FIPS `11`)
 for its own pool: DC is not a state, and at map scale a dot on it also covers
 Maryland and Virginia, so the three are indistinguishable.
 
-**StateQuiz.jsx / CityQuiz.jsx / AirportQuiz.jsx / AirportSatelliteQuiz.jsx /
-CitySatelliteQuiz.jsx / WorldCitySatelliteQuiz.jsx /
-WorldAirportSatelliteQuiz.jsx** all follow the same pattern: a wrapper component
-holds `gameKey` and `result`, and a `Game` inner component handles round logic.
-Incrementing `gameKey` remounts `Game` for a clean restart. Each game runs 10
-rounds, tracks score, and calls `onFinish(score, review)` to show ResultsScreen.
-The map modes' overlay toggles (Rivers / Mountains / State Borders) are held by
-the **wrapper**, above the remount, so Start Over resets the score and round but
-leaves the overlays as the player set them. `Game` seeds its first round with
-`pick…(new Set())` rather than the used-index ref, because reading a ref during
-render is a React rules violation.
+**`quiz/QuizScreen.jsx` / `quiz/QuizGame.jsx`**: QuizScreen holds `gameKey` and
+`result`; QuizGame runs the rounds. Incrementing `gameKey` remounts QuizGame for a
+clean restart. Each game runs 10 rounds, tracks score, and calls
+`onFinish(score, review)` to show ResultsScreen. The map overlays (Rivers /
+Mountains / State Borders) are held by **QuizScreen**, above the remount, so Play
+Again resets the score and round but leaves the overlays as the player set them.
+QuizGame seeds its first round with `pick(def, new Set())` rather than the
+used-index ref, because reading a ref during render is a React rules violation.
+The refactor was checked by screenshotting all seven modes (question, hint and
+feedback, at 1280×800 and 390×844) before and after with `Math.random` seeded:
+the only pixel differences were the dot's ripple animation frame and a blinking
+caret.
+
+**Screen readers** hear feedback and hints through one `.sr-only` `aria-live`
+region that QuizGame keeps mounted and updates. The feedback and hint bubbles
+mount with their text already inside, which many screen readers never announce,
+so they are deliberately not live regions themselves (that would also double-read
+where it did work).
 
 **Advancing past the feedback bubble** (`utils/useAdvanceOnDismiss.js`): one
-shared hook, used by all seven `Game`s, attaches the window `keydown`/`click`
+shared hook, used by QuizGame, attaches the window `keydown`/`click`
 listeners that advance the round while the bubble is up. Attaching them from an
 effect keyed on the bubble's visibility is what stops the very keypress that
 submitted the answer from dismissing it, and `onAdvance` is read through a ref
@@ -137,9 +174,9 @@ the bubble is up rather than merely excluded from the advance: excluding them ma
 the click a silent no-op, and in the three map modes `handleShuffle` used to also
 call `setFeedback(null)`, which re-enabled the input without advancing the round
 counter — a player could answer, Shuffle, answer again, and farm **27/10 and a
-"Perfect score!"** while `reviewRef` collected duplicate `round` values. The four
-satellite modes never had the bug; their `handleNewImage` omits the reset. Keep it
-that way.
+"Perfect score!"** while `reviewRef` collected duplicate `round` values. The
+satellite modes never had the bug. QuizGame's single `handleShuffle` serves both
+labels and deliberately leaves the feedback alone. Keep it that way.
 
 `pick…` takes an exclude argument covering the *current, unanswered* target as
 well as the answered ones, so Shuffle can never hand back the target already on
@@ -148,7 +185,7 @@ four satellite modes used to have a separate `pickDifferent…` for New Image th
 ignored the answered set, so in round 10 of Airport Satellite a third of clicks
 brought back an airport already played, and the review listed it twice.
 
-**End-of-game review.** Every `Game` accumulates one entry per answered round in a
+**End-of-game review.** QuizGame accumulates one entry per answered round in a
 `reviewRef` (pushed from `handleGuess`, so a Shuffle / New Image that replaces the target
 without answering is correctly not recorded), and hands the array up through
 `onFinish(score, review)`. Each entry is
@@ -240,36 +277,35 @@ vs. Satellite) before launching; the two World tiles are satellite-only and laun
 directly. The modal is a `role="dialog"` / `aria-modal` container that moves focus to its
 first option on open and closes on Escape or a backdrop click.
 
-- **US State Quiz** — blank Albers USA map, a random point inside a state; user guesses
+- **US State Quiz** (`modes/usState.js`, `/us-state`) — blank Albers USA map, a random point inside a state; user guesses
   the state name.
-- **US City Quiz** — same map, a red dot on a preset city from `src/data/cities.js`; user
+- **US City Quiz** (`modes/usCity.js`, `/us-city`) — same map, a red dot on a preset city from `src/data/cities.js`; user
   guesses the city name. Sub-modes: **Blank Map** and **Satellite**. The Satellite
   sub-mode launches the City Satellite Quiz below.
-- **City Satellite Quiz** (`CitySatelliteQuiz.jsx`, mode `"city-satellite"`) — shows a
+- **City Satellite Quiz** (`modes/usCitySatellite.js`, `/us-city-satellite`) — shows a
   satellite image from `public/satellite/cities/{imageFile}`, drawn from
   `src/data/satellite-cities.js`; user guesses the city. Accepts the city name (fuzzy)
   or common abbreviations (NYC, NOLA, DC, SF, LA); autocomplete and the reveal use the
   `City, State` form. Two-level hints reveal region then state.
-- **US Airport Quiz** — same map, a red dot on a preset airport from
+- **US Airport Quiz** (`modes/usAirport.js`, `/us-airport`) — same map, a red dot on a preset airport from
   `src/data/airports.js`; user guesses the airport code or city. Sub-modes: **Blank Map**
   and **Satellite**. Blank Map has a two-level hint system (level 1: airline hub →
   level 2: state). The Satellite sub-mode launches the Airport Satellite Quiz below.
-- **Airport Satellite Quiz** (`AirportSatelliteQuiz.jsx`, mode `"airport-satellite"`) —
+- **Airport Satellite Quiz** (`modes/usAirportSatellite.js`, `/us-airport-satellite`) —
   shows a satellite image from `public/satellite/airports/{CODE}.jpg`, drawn from the
   curated `src/data/satellite-airports.js` pool; user guesses the airport. Two-level
   hints reveal region (US Census-style) then state.
-- **World City Quiz** (`WorldCitySatelliteQuiz.jsx`, mode `"world-city-satellite"`) —
+- **World City Quiz** (`modes/worldCity.js`, `/world-city`) —
   satellite image from `public/satellite/world-cities/{imageFile}`, pool
   `src/data/satellite-world-cities.js` (54 cities); user guesses the city. Four hint
   levels: region → country → first letter → the entry's `funFact`.
-- **World Airport Quiz** (`WorldAirportSatelliteQuiz.jsx`, mode
-  `"world-airport-satellite"`) — satellite image from
+- **World Airport Quiz** (`modes/worldAirport.js`, `/world-airport`) — satellite image from
   `public/satellite/world-airports/{IATA}.jpg`, pool
   `src/data/satellite-world-airports.js` (60 airports); accepts the IATA code, the full
   airport name or the city. Four hint levels: continent → country → city → IATA code.
 
 The satellite quizzes share `AirportGuessInput` (it takes an optional `placeholder` and a
-custom `getSuggestions`), the floating `FeedbackBubble` / hint-bubble behavior, and
+custom `getSuggestions`, ranked by `utils/suggest.js`), the floating `FeedbackBubble` / hint-bubble behavior, and
 `SatelliteImage.jsx` — one component holding the loading, error and retry states for all
 four modes. Before it existed each rendered a bare `<img>` with no `onError`: the images
 were ~1.2 MB each at the time (~0.5 MB now), so a slow connection showed an unexplained
@@ -479,9 +515,8 @@ coastline misses, not errors. **`npm run check` re-runs the US point-in-state sw
 - **The answer inputs are cleared by remount, not by an effect.** Each of the three input
   components used to clear its field from an effect keyed on `disabled`, which was the
   project's only three lint errors (`react-hooks/set-state-in-effect`). The effect is gone;
-  every quiz now keys the input `${round}-${shuffleId}` (map modes) or
-  `${round}-${current.index}` (satellite modes), so a new round and a Shuffle both remount
-  it. If you touch this, preserve all three behaviours it carries: the field clears on a new
+  QuizGame keys the input `${round}-${shuffleId}` in every mode, so a new round and a
+  Shuffle / New Image both remount it. If you touch this, preserve all three behaviours it carries: the field clears on a new
   round, Shuffle still remounts, and `autoFocus={!isTouchDevice()}` stays — focusing on
   remount on a phone pops the keyboard over the map before the player has seen it.
 

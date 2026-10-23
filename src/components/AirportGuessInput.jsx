@@ -20,7 +20,8 @@ function HintBubble({ content }) {
   }, []);
 
   return (
-    <div className={`hint-bubble${shown ? " is-shown" : ""}`} role="status">
+    // Announced by QuizGame's live region, not here (see FeedbackBubble).
+    <div className={`hint-bubble${shown ? " is-shown" : ""}`}>
       {content}
       {/* little tail pointing down at the button */}
       <span className="hint-bubble-tail" />

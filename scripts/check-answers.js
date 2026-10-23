@@ -23,46 +23,64 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const load = async (path) => (await runnerImport(root + path)).module;
 
 const { states } = await load("src/data/usGeo.js");
-const { stateAbbreviations, matchesState } = await load("src/data/states.js");
-const { cities, cityAbbreviations, matchCity } = await load("src/data/cities.js");
+const { stateAbbreviations } = await load("src/data/states.js");
+const { cities, cityAbbreviations } = await load("src/data/cities.js");
 const { satelliteCities } = await load("src/data/satellite-cities.js");
-const { airports, matchAirport } = await load("src/data/airports.js");
+const { airports } = await load("src/data/airports.js");
 const { satelliteAirports } = await load("src/data/satellite-airports.js");
-const { satelliteWorldCities, worldCityAbbreviations, matchWorldCity } = await load(
+const { satelliteWorldCities, worldCityAbbreviations } = await load(
   "src/data/satellite-world-cities.js"
 );
 const { satelliteWorldAirports } = await load("src/data/satellite-world-airports.js");
-const { makeAirportMatcher, airportAnswerForms } = await load("src/utils/airportMatch.js");
+const { airportAnswerForms } = await load("src/utils/airportMatch.js");
 const { default: pointInPolygon } = await import("point-in-polygon");
+
+// The mode definitions the game itself runs, so the sweep tests each mode's
+// real `match`, not a reconstruction of it.
+const mode = async (name) => (await load(`src/modes/${name}.js`)).default;
+const MODE = {
+  usState: await mode("usState"),
+  usCity: await mode("usCity"),
+  usCitySatellite: await mode("usCitySatellite"),
+  usAirport: await mode("usAirport"),
+  usAirportSatellite: await mode("usAirportSatellite"),
+  worldCity: await mode("worldCity"),
+  worldAirport: await mode("worldAirport"),
+};
 
 const failures = [];
 const fail = (msg) => failures.push(msg);
 let checks = 0;
 
-// ---- Pools: each entry with its accepted forms and its matcher ----
+// ---- Pools: each entry with its accepted forms and its mode's matcher ----
 
-const statePool = Object.entries(stateAbbreviations).map(([name, abbr]) => ({
-  label: name,
-  forms: [name, abbr],
-  match: (g) => matchesState(g, name),
-}));
+// The State Quiz's target is { state, point }; only the state matters here.
+const statePool = MODE.usState.pool.map((state) => {
+  const name = state.properties.name;
+  return {
+    label: name,
+    forms: [name, stateAbbreviations[name]],
+    match: (g) => MODE.usState.match(g, { state }),
+  };
+});
 
-const usCityPool = (list) =>
-  list.map((c) => ({
+const usCityPool = (def) =>
+  def.pool.map((c) => ({
     label: `${c.name}, ${c.state}`,
     // The bare name is shared by the two Portlands, so it is a form both accept.
     shared: c.name,
     forms: [c.name, `${c.name}, ${c.state}`, cityAbbreviations[c.name]].filter(Boolean),
-    match: (g) => matchCity(g, c),
+    match: (g) => def.match(g, c),
   }));
 
-const worldCityPool = satelliteWorldCities.map((c) => ({
+const worldCityPool = MODE.worldCity.pool.map((c) => ({
   label: c.name,
   forms: [c.name, `${c.name}, ${c.country}`, worldCityAbbreviations[c.name]].filter(Boolean),
-  match: (g) => matchWorldCity(g, c),
+  match: (g) => MODE.worldCity.match(g, c),
 }));
 
-function airportPool(list, codeKey, matcher = makeAirportMatcher(list, codeKey)) {
+function airportPool(def, codeKey) {
+  const list = def.pool;
   const forms = airportAnswerForms(list, codeKey);
   const cityCount = (city) => list.filter((a) => a.city === city).length;
   return list.map((a, i) => ({
@@ -70,18 +88,18 @@ function airportPool(list, codeKey, matcher = makeAirportMatcher(list, codeKey))
     // Same-city airports share the city name, which neither of them accepts.
     shared: a.city,
     forms: [...forms[i], a[codeKey], ...(cityCount(a.city) === 1 ? [a.city] : [])],
-    match: (g) => matcher(g, a),
+    match: (g) => def.match(g, a),
   }));
 }
 
 const POOLS = {
   "US State": statePool,
-  "US City": usCityPool(cities),
-  "City Satellite": usCityPool(satelliteCities),
+  "US City": usCityPool(MODE.usCity),
+  "City Satellite": usCityPool(MODE.usCitySatellite),
   "World City": worldCityPool,
-  "US Airport": airportPool(airports, "code", matchAirport),
-  "Airport Satellite": airportPool(satelliteAirports, "code"),
-  "World Airport": airportPool(satelliteWorldAirports, "iata"),
+  "US Airport": airportPool(MODE.usAirport, "code"),
+  "Airport Satellite": airportPool(MODE.usAirportSatellite, "code"),
+  "World Airport": airportPool(MODE.worldAirport, "iata"),
 };
 
 // ---- 1 and 2: cross-accepts and self-accepts ----
@@ -170,6 +188,21 @@ for (const [poolName, label, guess, expected] of CASES) {
   if (!entry) fail(`case: no ${label} in ${poolName}`);
   else if (entry.match(guess) !== expected) {
     fail(`${poolName}: "${guess}" ${expected ? "rejected" : "accepted"} for ${label}`);
+  }
+}
+
+// Every hint of every entry renders to something, so a data gap shows up here
+// rather than as an empty bubble mid-game.
+for (const [name, def] of Object.entries(MODE)) {
+  for (const item of def.pool) {
+    const target = name === "usState" ? { state: item, point: [0, 0] } : item;
+    def.hints.forEach((hint, level) => {
+      checks++;
+      const h = hint(target);
+      if (!h || (typeof h === "object" && !h.items?.length)) {
+        fail(`${name}: hint ${level + 1} is empty for ${def.reveal(target)}`);
+      }
+    });
   }
 }
 

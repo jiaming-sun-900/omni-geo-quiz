@@ -46,14 +46,17 @@ function GlobePlaceholder() {
   );
 }
 
+// `mode` is the route slug (see routes.js). The US City and US Airport rows
+// open the Blank Map / Satellite chooser instead, whose two options are the
+// slug and the slug + "-satellite".
 const ENTRIES = [
-  { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "state" },
-  { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "city" },
-  { num: "III.", icon: "✈️ 🇺🇸", name: "US Airport Quiz", mode: "airport" },
+  { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "us-state" },
+  { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "us-city", choose: true },
+  { num: "III.", icon: "✈️ 🇺🇸", name: "US Airport Quiz", mode: "us-airport", choose: true },
   // Modes IV and V are satellite-only (no Blank Map submode), so they skip the
   // submode-selection modal and launch the game directly.
-  { num: "IV.", icon: "📍 🌍", name: "World City Quiz", mode: "world-city-satellite" },
-  { num: "V.", icon: "✈️ 🌍", name: "World Airport Quiz", mode: "world-airport-satellite" },
+  { num: "IV.", icon: "📍 🌍", name: "World City Quiz", mode: "world-city" },
+  { num: "V.", icon: "✈️ 🌍", name: "World Airport Quiz", mode: "world-airport" },
 ];
 
 export default function HomeScreen({ onSelectMode }) {
@@ -61,12 +64,9 @@ export default function HomeScreen({ onSelectMode }) {
   const firstOptionRef = useRef(null);
   const modalRef = useRef(null);
 
-  const handleSelect = (mode) => {
-    if (mode === "airport" || mode === "city") {
-      setModalMode(mode);
-    } else {
-      onSelectMode(mode);
-    }
+  const handleSelect = (entry) => {
+    if (entry.choose) setModalMode(entry.mode);
+    else onSelectMode(entry.mode);
   };
 
   // Close the mode-selection modal (Airport / City) on Escape, and move focus
@@ -132,7 +132,7 @@ export default function HomeScreen({ onSelectMode }) {
             <button
               key={e.num}
               className="menu-row"
-              onClick={() => handleSelect(e.mode)}
+              onClick={() => handleSelect(e)}
             >
               <span className="menu-num">{e.num}</span>
               <span className="menu-icon" aria-hidden="true">
@@ -156,7 +156,7 @@ export default function HomeScreen({ onSelectMode }) {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label={`Choose a ${modalMode === "city" ? "City" : "Airport"} Quiz mode`}
+            aria-label={`Choose a ${modalMode === "us-city" ? "City" : "Airport"} Quiz mode`}
           >
             <div className="mode-option">
               <button

@@ -1,44 +1,52 @@
-import { useState, lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import HomeScreen from "./components/HomeScreen";
+import { useRoute, navigate, setTitleFor } from "./router";
 import "./App.css";
 
-// Every quiz mode is code-split, and so is the globe (lazily imported inside
-// HomeScreen). The entry bundle is therefore just the shell and the menu: the
-// us-atlas TopoJSON behind the map modes and the Three.js/d3-geo stack behind
-// the globe each load only when something actually asks for them.
-const StateQuiz = lazy(() => import("./components/StateQuiz"));
-const CityQuiz = lazy(() => import("./components/CityQuiz"));
-const AirportQuiz = lazy(() => import("./components/AirportQuiz"));
-const AirportSatelliteQuiz = lazy(() =>
-  import("./components/AirportSatelliteQuiz")
-);
-const CitySatelliteQuiz = lazy(() => import("./components/CitySatelliteQuiz"));
-const WorldCitySatelliteQuiz = lazy(() =>
-  import("./components/WorldCitySatelliteQuiz")
-);
-const WorldAirportSatelliteQuiz = lazy(() =>
-  import("./components/WorldAirportSatelliteQuiz")
-);
-
-const QUIZZES = {
-  state: StateQuiz,
-  city: CityQuiz,
-  airport: AirportQuiz,
-  "airport-satellite": AirportSatelliteQuiz,
-  "city-satellite": CitySatelliteQuiz,
-  "world-city-satellite": WorldCitySatelliteQuiz,
-  "world-airport-satellite": WorldAirportSatelliteQuiz,
+// Each mode's definition, keyed by its URL slug (see routes.js). Every one is
+// its own chunk, as is the quiz engine and the globe (lazily imported inside
+// HomeScreen), so the entry bundle is just the shell and the menu: the us-atlas
+// TopoJSON behind the map modes and the Three.js stack behind the globe load
+// only when something asks for them.
+const MODES = {
+  "us-state": () => import("./modes/usState"),
+  "us-city": () => import("./modes/usCity"),
+  "us-city-satellite": () => import("./modes/usCitySatellite"),
+  "us-airport": () => import("./modes/usAirport"),
+  "us-airport-satellite": () => import("./modes/usAirportSatellite"),
+  "world-city": () => import("./modes/worldCity"),
+  "world-airport": () => import("./modes/worldAirport"),
 };
 
+// One lazy component per mode: it loads the definition and the shared engine
+// together, then renders the engine with that definition.
+const QUIZZES = Object.fromEntries(
+  Object.entries(MODES).map(([slug, load]) => [
+    slug,
+    lazy(async () => {
+      const [{ default: def }, { default: QuizScreen }] = await Promise.all([
+        load(),
+        import("./quiz/QuizScreen"),
+      ]);
+      return { default: (props) => <QuizScreen def={def} {...props} /> };
+    }),
+  ])
+);
+
 export default function App() {
-  const [mode, setMode] = useState(null);
+  const route = useRoute();
 
-  if (!mode) return <HomeScreen onSelectMode={setMode} />;
+  useEffect(() => {
+    setTitleFor(route);
+  }, [route]);
 
-  const Quiz = QUIZZES[mode];
+  const Quiz = QUIZZES[route.slug];
+  if (!Quiz) return <HomeScreen onSelectMode={navigate} />;
+
   return (
     <Suspense fallback={<div className="mode-loading">Loading…</div>}>
-      <Quiz onHome={() => setMode(null)} />
+      {/* Keyed on the slug, so moving between modes is a fresh mount. */}
+      <Quiz key={route.slug} onHome={() => navigate("")} />
     </Suspense>
   );
 }

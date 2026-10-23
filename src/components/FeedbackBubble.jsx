@@ -17,8 +17,9 @@ export default function FeedbackBubble({ correct, message }) {
 
   return (
     <div
-      role="status"
-      aria-live="polite"
+      // Not a live region: it mounts with its text already in it, which many
+      // screen readers don't announce. QuizGame's always-present region does
+      // the announcing.
       // The height cap is the one value that cannot live inline: it needs a vh
       // fallback for engines without dvh, and two inline declarations of the
       // same property can't coexist. See .feedback-bubble in App.css.
