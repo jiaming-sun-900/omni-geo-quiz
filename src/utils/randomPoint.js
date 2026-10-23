@@ -1,6 +1,8 @@
 import inside from "point-in-polygon";
 
-export function getRandomPointInState(feature) {
+// `random` defaults to Math.random; the Daily Challenge passes a seeded one so
+// every player gets the same dot on the same day.
+export function getRandomPointInState(feature, random = Math.random) {
   const polygons = [];
 
   if (feature.geometry.type === "Polygon") {
@@ -38,8 +40,8 @@ export function getRandomPointInState(feature) {
   const padLat = (maxLat - minLat) * 0.1;
 
   for (let attempt = 0; attempt < 1000; attempt++) {
-    const lng = minLng + padLng + Math.random() * (maxLng - minLng - 2 * padLng);
-    const lat = minLat + padLat + Math.random() * (maxLat - minLat - 2 * padLat);
+    const lng = minLng + padLng + random() * (maxLng - minLng - 2 * padLng);
+    const lat = minLat + padLat + random() * (maxLat - minLat - 2 * padLat);
 
     // Check against all polygons of this feature
     for (const poly of polygons) {

@@ -35,6 +35,8 @@ const QUIZZES = Object.fromEntries(
 
 // Pages that aren't quiz modes, also code-split.
 const AboutScreen = lazy(() => import("./components/AboutScreen"));
+const DailyScreen = lazy(() => import("./daily/DailyScreen"));
+const PAGES = { about: AboutScreen, daily: DailyScreen };
 
 export default function App() {
   const route = useRoute();
@@ -45,10 +47,11 @@ export default function App() {
 
   const goHome = () => navigate("");
 
-  if (route.slug === "about") {
+  const Page = PAGES[route.slug];
+  if (Page) {
     return (
       <Suspense fallback={<div className="mode-loading">Loading…</div>}>
-        <AboutScreen onHome={goHome} />
+        <Page onHome={goHome} />
       </Suspense>
     );
   }

@@ -42,7 +42,8 @@ export default function AboutScreen({ onHome }) {
           {link("https://github.com/topojson/world-atlas", "world-atlas")} (Natural Earth).
         </p>
         <p>
-          <b>Privacy.</b> No accounts, ads, cookies or tracking.
+          <b>Privacy.</b> No accounts, ads, cookies or tracking. Your Daily
+          Challenge progress is saved in this browser only.
         </p>
         <p>
           Made by {link("https://jiaming-sun-900.github.io", "Jiaming Sun")} ·{" "}

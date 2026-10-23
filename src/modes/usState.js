@@ -19,7 +19,8 @@ export default {
   // also covers Maryland and Virginia and the three are indistinguishable.
   pool: states.filter((s) => s.id !== "11"),
   // A fresh random point inside the state every time it is picked.
-  prepare: (state) => ({ state, point: getRandomPointInState(state) }),
+  // The Daily Challenge passes a seeded `random`, so everyone gets the same dot.
+  prepare: (state, random) => ({ state, point: getRandomPointInState(state, random) }),
   Stage: MapStage,
   dot: (t) => t.point,
   revealStateId: (t) => t.state.id,

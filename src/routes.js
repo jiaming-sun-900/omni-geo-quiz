@@ -5,6 +5,7 @@
 // 404. The slug is the path under the base URL; "" is the home screen.
 export const ROUTES = [
   { slug: "", title: "Omni Geo Quiz" },
+  { slug: "daily", title: "Daily Challenge" },
   { slug: "us-state", title: "US State Quiz" },
   { slug: "us-city", title: "US City Quiz" },
   { slug: "us-city-satellite", title: "US City Quiz (Satellite)" },

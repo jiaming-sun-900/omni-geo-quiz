@@ -1,0 +1,38 @@
+/* The Daily Challenge's block on the results screen: the share grid, the
+   Share button (.daily-play, from home.css) and the streak line. */
+
+.daily-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0.25rem 0 1.5rem;
+}
+
+.daily-grid {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 1.7rem;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+}
+
+.daily-share-text {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  user-select: all;
+}
+
+.daily-stats {
+  margin: 0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #6E6E7A;
+}

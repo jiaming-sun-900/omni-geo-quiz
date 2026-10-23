@@ -36,11 +36,12 @@ interactive Three.js globe.
 ## Architecture
 
 **Every page has a URL.** `src/routes.js` is the one table of pages (slug +
-title): `""` (home), `us-state`, `us-city`, `us-city-satellite`, `us-airport`,
-`us-airport-satellite`, `world-city`, `world-airport`, under the
-`/omni-geo-quiz/` base. `src/router.js` is a ~40-line History API router
-(`useRoute`, `navigate`, `setTitleFor`); there are eight flat pages and no
-parameters, so no router library. Browser Back works, and the tab title follows
+title): `""` (home), `daily`, the seven modes (`us-state`, `us-city`,
+`us-city-satellite`, `us-airport`, `us-airport-satellite`, `world-city`,
+`world-airport`) and `about`, under the `/omni-geo-quiz/` base. `src/router.js` is
+a ~40-line History API router (`useRoute`, `navigate`, `setTitleFor`); the pages
+are flat with no parameters, so no router library. `navigate` scrolls to the top,
+since the home page scrolls and the next page would otherwise open at its offset. Browser Back works, and the tab title follows
 the page.
 
 **Deep links on GitHub Pages.** Pages serves files, so `/omni-geo-quiz/world-airport`
@@ -73,7 +74,7 @@ the definition and `quiz/QuizScreen` together, behind one `<Suspense>` with the
 its own `<Suspense>`. The definition imports its stage, so a map mode pulls in
 `MapStage` (USMap + the us-atlas TopoJSON) with no second round trip.
 
-Current split: entry **201 kB** (63 kB gzip; it carries the home page and its styles), `Globe` **648 kB** (178 kB gzip),
+Current split: entry **202 kB** (64 kB gzip; it carries the home page, its styles and the daily card's date/store helpers), `Globe` **648 kB** (178 kB gzip),
 `MapStage` (USMap + us-atlas TopoJSON) 180 kB, the shared engine (`QuizScreen`)
 13 kB, each mode definition 0.4–12 kB.
 
@@ -140,7 +141,12 @@ for its own pool: DC is not a state, and at map scale a dot on it also covers
 Maryland and Virginia, so the three are indistinguishable.
 
 **`quiz/QuizScreen.jsx` / `quiz/QuizGame.jsx`**: QuizScreen holds `gameKey` and
-`result`; QuizGame runs the rounds. Incrementing `gameKey` remounts QuizGame for a
+`result`; QuizGame runs the rounds. QuizGame takes either `def` (one mode, a random
+target each round, with Shuffle / New Image) or `plan`, a fixed list of
+`{ def, index, target }` rounds that may each come from a different mode (the Daily
+Challenge; no Shuffle, since everyone plays the same ten). `initial` resumes a game
+part-way and `onAnswer(review, score)` reports each answer, which is how the daily
+survives a reload. Every review entry records `hints`, the number opened. Incrementing `gameKey` remounts QuizGame for a
 clean restart. Each game runs 10 rounds, tracks score, and calls
 `onFinish(score, review)` to show ResultsScreen. The map overlays (Rivers /
 Mountains / State Borders) are held by **QuizScreen**, above the remount, so Play
@@ -151,6 +157,34 @@ The refactor was checked by screenshotting all seven modes (question, hint and
 feedback, at 1280×800 and 390×844) before and after with `Math.random` seeded:
 the only pixel differences were the dot's ripple animation frame and a blinking
 caret.
+
+**The Daily Challenge** (`src/daily/`, route `/daily`): ten rounds a day, five in the
+US (State, City map, Airport map, City satellite, Airport satellite) then five world
+(city, airport, city, airport, city), the same for everyone on the same **local**
+calendar date, as in Wordle; #1 is 2026-10-23 (`date.js`).
+- `plan.js` builds a day. Each pool walks a seeded shuffle of itself a few entries a
+  day, so nothing repeats until the whole pool has been used (54 world cities, three a
+  day: 18 days), and **each pass gets a fresh shuffle**: with one fixed shuffle the same
+  three cities came back together, in the same slots, every 18 days. The City map and
+  City satellite pools mirror each other and share one walk, and a day skips anything
+  already in it (the US airport pools overlap), so a day never names a place twice. The
+  State dot comes from a seeded PRNG via `prepare(item, random)`, or players would see
+  different dots. Changing a pool, `ORIGIN` or the slots reshuffles every day, past ones
+  included; acceptable while there is no server history to keep consistent.
+- `store.js` saves `{ status, score, review }` per date in localStorage after every
+  answer: a reload resumes at the next round, a finished day opens on its results, and
+  there is one go per day. Every access is try/catch, so with storage blocked the daily
+  still plays and simply forgets. `getStats` gives the streak (consecutive finished days
+  ending today, or yesterday while today is unplayed) and the played count.
+- `share.js`: one square per round, 🟩 right without a hint, 🟨 right after one, 🟥
+  missed, in two rows of five (US, world), plus the score and the `/daily` link. The
+  phone share sheet on touch devices, the clipboard elsewhere, and the text shown for
+  hand-copying if both fail.
+- The home page's `DailyCard` reads the same store: Play, `Continue · 4/10`, or the
+  score and squares with Results, plus the streak.
+- `npm run check` builds two years of plans and checks each is the ten slots in order,
+  never repeats a place, puts the State dot inside its state, and rebuilds identically;
+  and that the first 18 days cover every world city.
 
 **Screen readers** hear feedback and hints through one `.sr-only` `aria-live`
 region that QuizGame keeps mounted and updates. The feedback and hint bubbles
@@ -276,6 +310,7 @@ replaced a Blank Map / Satellite pop-up, which didn't scale past a handful of mo
 button's `aria-label` names the quiz as well ("US City Quiz, Satellite"), since the visible
 label alone is just the variant.
 
+- **Daily Challenge** (`/daily`) — ten mixed rounds a day; see The Daily Challenge above.
 - **US State Quiz** (`modes/usState.js`, `/us-state`) — blank Albers USA map, a random point inside a state; user guesses
   the state name.
 - **US City Quiz** (`modes/usCity.js`, `/us-city`) — same map, a red dot on a preset city from `src/data/cities.js`; user

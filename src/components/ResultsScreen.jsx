@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { wikipediaUrl, satelliteMapUrl } from "../utils/reviewLinks";
 
-// One reviewed round. `item` is built by each quiz's Game component (see
-// buildReviewEntry usage there) and always carries: round, correct, guess,
-// answer, wiki (Wikipedia query), lat, lng, and optionally image and zoom.
+// One reviewed round. `item` is built by QuizGame and always carries: round,
+// correct, guess, hints, answer, wiki (Wikipedia query), lat, lng, and
+// optionally image and zoom.
 function ReviewRow({ item }) {
   return (
     <li className={`review-row${item.correct ? " is-correct" : " is-missed"}`}>
@@ -49,12 +49,16 @@ function ReviewRow({ item }) {
   );
 }
 
+// `onPlayAgain` is optional: the Daily Challenge has no replay, and passes its
+// share grid and streak as `children`, shown under the score.
 export default function ResultsScreen({
   score,
   total,
   review = [],
+  heading = "Results",
   onPlayAgain,
   onHome,
+  children,
 }) {
   // Scored out of the rounds actually reviewed, so the headline percentage can
   // never disagree with the list below it; `total` is only the fallback for a
@@ -89,21 +93,24 @@ export default function ResultsScreen({
     <div className="results-screen">
       <div className="results-summary">
         <h2 ref={headingRef} tabIndex={-1}>
-          Results
+          {heading}
         </h2>
         <div className="score-display">
           <span className="score-big">{score}/{total}</span>
         </div>
         <p className="results-message">{message}</p>
+        {children}
         <div className="results-buttons">
-          <button
-            className="results-btn results-home"
-            onClick={onPlayAgain}
-            aria-label="Play again"
-            title="Play again"
-          >
-            <span aria-hidden="true">🔄</span>
-          </button>
+          {onPlayAgain && (
+            <button
+              className="results-btn results-home"
+              onClick={onPlayAgain}
+              aria-label="Play again"
+              title="Play again"
+            >
+              <span aria-hidden="true">🔄</span>
+            </button>
+          )}
           <button
             className="results-btn results-home"
             onClick={onHome}

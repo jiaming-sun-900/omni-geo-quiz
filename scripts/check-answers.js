@@ -10,6 +10,7 @@
 //      and nicknames, must be accepted.
 //   3. Data: US points lie inside their claimed state, the satellite city pool
 //      mirrors cities.js, and every image a pool names exists (and no others).
+//   4. Daily Challenge: two years of plans are well formed and deterministic.
 //
 // Usage: npm run check
 
@@ -255,6 +256,45 @@ for (const [dir, names] of [
     checks++;
     if (!wanted.has(n)) fail(`public/satellite/${dir}/${n} is not used by any pool`);
   }
+}
+
+// ---- Daily Challenge plans ----
+
+// Two years of days from the first challenge: every plan is the ten slots in
+// order, never names one place twice, puts the State dot inside its state, and
+// is the same on a second build (everyone has to get the same ten).
+const { buildPlan } = await load("src/daily/plan.js");
+const { dateKey } = await load("src/daily/date.js");
+const SLOT_ORDER = ["us-state", "us-city", "us-airport", "us-city-satellite", "us-airport-satellite",
+  "world-city", "world-airport", "world-city", "world-airport", "world-city"];
+const seenOverCycle = new Map();
+for (let i = 0; i < 730; i++) {
+  const key = dateKey(new Date(2026, 9, 23 + i));
+  const plan = buildPlan(key);
+  checks++;
+  const slugs = plan.map((r) => r.def.slug).join();
+  if (slugs !== SLOT_ORDER.join()) fail(`daily ${key}: slots ${slugs}`);
+  const names = plan.map((r) => r.def.reveal(r.target));
+  checks++;
+  if (new Set(names).size !== names.length) fail(`daily ${key}: repeats a place: ${names.join(" | ")}`);
+  const state = plan[0].target;
+  checks++;
+  if (!inFeature(state.state, state.point[0], state.point[1])) {
+    fail(`daily ${key}: the State dot is outside ${state.state.properties.name}`);
+  }
+  if (i < 60) {
+    checks++;
+    const again = buildPlan(key).map((r) => r.def.reveal(r.target) + r.target.point).join();
+    if (again !== plan.map((r) => r.def.reveal(r.target) + r.target.point).join()) {
+      fail(`daily ${key}: two builds differ`);
+    }
+  }
+  // The first 18 days must between them show every world city (3 a day).
+  if (i < 18) for (const r of plan) if (r.def.slug === "world-city") seenOverCycle.set(r.index, true);
+}
+checks++;
+if (seenOverCycle.size !== MODE.worldCity.pool.length) {
+  fail(`daily: the first 18 days show ${seenOverCycle.size} of ${MODE.worldCity.pool.length} world cities`);
 }
 
 if (failures.length > 0) {

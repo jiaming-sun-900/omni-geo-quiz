@@ -7,13 +7,15 @@ import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
 
 export const TOTAL_ROUNDS = 10;
 
-// One game of ten rounds, for any mode. Everything mode-specific comes from the
-// mode definition (`def`, see src/modes/), so the seven quizzes share one copy
-// of the round logic instead of seven:
+// One game of ten rounds. Either `def`, one mode with a random target each
+// round (and Shuffle / New Image), or `plan`, a fixed list of
+// { def, index, target } rounds that may each come from a different mode: the
+// Daily Challenge. Everything mode-specific comes from the mode definition (see
+// src/modes/), so every quiz shares one copy of the round logic:
 //
 //   pool              the entries to ask about
-//   prepare(item)?    turns an entry into the round's target (the State Quiz
-//                     picks a random point inside the state); default: itself
+//   prepare(item, random?)  turns an entry into the round's target (the State
+//                     Quiz picks a point inside the state); default: itself
 //   Stage             MapStage or SatelliteStage, given the target
 //   dot / revealStateId / image / imageAlt   what the stage draws
 //   prompt, input, placeholder?, getSuggestions?   the question and the field
@@ -22,6 +24,10 @@ export const TOTAL_ROUNDS = 10;
 //   match(guess, t)   the answer check
 //   reveal(t)         the answer as shown in the feedback bubble
 //   review(t)         { answer, wiki, lat, lng, image?, zoom? } for ResultsScreen
+//
+// `initial` ({ score, review }) resumes a game part-way, and `onAnswer(review,
+// score)` reports each answer as it happens; the Daily Challenge saves both so a
+// reload continues where it left off.
 
 // `exclude` is the entry currently on screen. Shuffle / New Image pass it, so a
 // reshuffle can neither hand back the target already showing nor (while
@@ -33,7 +39,7 @@ function pick(def, used, exclude = -1) {
   const from = fresh.length > 0 ? fresh : selectable;
   const index = from[Math.floor(Math.random() * from.length)];
   const item = def.pool[index];
-  return { index, target: def.prepare ? def.prepare(item) : item };
+  return { def, index, target: def.prepare ? def.prepare(item) : item };
 }
 
 function renderHint(hint) {
@@ -53,13 +59,25 @@ function renderHint(hint) {
 const hintAsText = (hint) =>
   hint == null || typeof hint === "string" ? hint : `${hint.lead} ${hint.items.join(", ")}`;
 
-export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverlay }) {
+export default function QuizGame({
+  def: modeDef,
+  plan,
+  initial,
+  onAnswer,
+  onHome,
+  onFinish,
+  overlays,
+  toggleOverlay,
+}) {
+  const total = plan ? plan.length : TOTAL_ROUNDS;
   const used = useRef(new Set());
-  const [round, setRound] = useState(1);
-  const [score, setScore] = useState(0);
+  const [round, setRound] = useState(() => (initial?.review.length ?? 0) + 1);
+  const [score, setScore] = useState(() => initial?.score ?? 0);
   // Seeded with an empty set rather than used.current: nothing is used yet on
   // mount, and reading a ref during render is a React rules violation.
-  const [current, setCurrent] = useState(() => pick(def, new Set()));
+  const [current, setCurrent] = useState(() =>
+    plan ? plan[initial?.review.length ?? 0] : pick(modeDef, new Set())
+  );
   const [feedback, setFeedback] = useState(null);
   // Bumped on each Shuffle; with the round it keys the guess input, so a new
   // target remounts the field, which is what clears it.
@@ -73,10 +91,12 @@ export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverla
   // mount with their text already in them, which many screen readers don't
   // announce; a region that is always present and changes its text, is.
   const [announcement, setAnnouncement] = useState("");
-  const scoreRef = useRef(0);
+  const scoreRef = useRef(initial?.score ?? 0);
   // One entry per answered round, handed to ResultsScreen at the end.
-  const reviewRef = useRef([]);
+  const reviewRef = useRef(initial ? [...initial.review] : []);
 
+  // This round's mode: always the same one, except in a plan.
+  const def = current.def;
   const t = current.target;
   const satellite = Boolean(def.image);
   const hintMax = def.hints.length;
@@ -90,8 +110,10 @@ export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverla
       scoreRef.current = next;
     }
     // Pushed here, so a Shuffle that replaces the target without an answer is
-    // correctly not recorded.
-    reviewRef.current.push({ round, correct, guess, ...def.review(t) });
+    // correctly not recorded. `hints` is how many were opened; the Daily
+    // Challenge's share grid shows a hinted answer differently.
+    reviewRef.current.push({ round, correct, guess, hints: hintLevel, ...def.review(t) });
+    onAnswer?.(reviewRef.current, scoreRef.current);
     const message = correct
       ? `Correct! ${def.reveal(t)}`
       : `Incorrect! The answer was ${def.reveal(t)}.`;
@@ -102,7 +124,7 @@ export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverla
   };
 
   const handleNext = () => {
-    if (round >= TOTAL_ROUNDS) {
+    if (round >= total) {
       onFinish(scoreRef.current, reviewRef.current);
       return;
     }
@@ -110,7 +132,8 @@ export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverla
     setFeedback(null);
     setHintLevel(0);
     setHintOpen(false);
-    setCurrent(pick(def, used.current));
+    // `round` is 1-based, so plan[round] is the next one.
+    setCurrent(plan ? plan[round] : pick(modeDef, used.current));
   };
 
   // A new target without advancing the round or changing the score. The button
@@ -118,7 +141,7 @@ export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverla
   // clear the feedback: doing so re-enabled the input on an already-scored
   // round, so answering again scored again and a 27/10 was reachable.
   const handleShuffle = () => {
-    setCurrent(pick(def, used.current, current.index));
+    setCurrent(pick(modeDef, used.current, current.index));
     setHintLevel(0);
     setHintOpen(false);
     setShuffleId((n) => n + 1);
@@ -182,14 +205,17 @@ export default function QuizGame({ def, onHome, onFinish, overlays, toggleOverla
       <div className="state-quiz-header">
         <div className="sq-right">
           <div className="sq-box sq-round" role="status">
-            Round {round}/{TOTAL_ROUNDS}
+            Round {round}/{total}
           </div>
           <div className="sq-box sq-score" role="status">
             Score: {score}
           </div>
-          <button className="sq-box sq-restart" onClick={handleShuffle} disabled={!!feedback}>
-            {satellite ? "New Image" : "Shuffle"}
-          </button>
+          {/* A plan is fixed: everyone plays the same ten, so no swapping. */}
+          {!plan && (
+            <button className="sq-box sq-restart" onClick={handleShuffle} disabled={!!feedback}>
+              {satellite ? "New Image" : "Shuffle"}
+            </button>
+          )}
         </div>
       </div>
 

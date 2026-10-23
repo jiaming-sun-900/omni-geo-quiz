@@ -1,4 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
+import { dateKey, dayNumber } from "../daily/date";
+import { getDay, getStats } from "../daily/store";
+import { gridRows } from "../daily/share";
 import "../home.css";
 
 // The globe drags in Three.js, OrbitControls, d3-geo, topojson-client and the
@@ -77,12 +80,46 @@ const SECTIONS = [
 
 const VARIANT_ICON = { "Blank Map": "🗺️", Satellite: "🛰️" };
 
-// Today's date as the daily card shows it, e.g. "Fri, Oct 23".
-const today = new Date().toLocaleDateString("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-});
+// The Daily Challenge card: today's number and date, and one button that
+// starts, continues or reopens it. Read from this browser's save at mount.
+function DailyCard({ onOpen }) {
+  const [state] = useState(() => {
+    const day = dateKey();
+    return { day, record: getDay(day), streak: getStats(day).streak };
+  });
+  const { day, record, streak } = state;
+  const date = new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+  let action = "Play";
+  if (record?.status === "done") action = "Results";
+  else if (record?.status === "playing") action = `Continue · ${record.review.length + 1}/10`;
+
+  return (
+    <div className="daily-card">
+      <div className="daily-head">
+        <span className="daily-badge">Today</span>
+        <span className="daily-date">
+          #{dayNumber(day)} · {date}
+        </span>
+        {streak > 0 && <span className="daily-streak">🔥 {streak}</span>}
+      </div>
+      <h2 className="daily-title">Daily Challenge</h2>
+      {record?.status === "done" && (
+        <p className="daily-done" aria-label={`Today: ${record.score} out of 10`}>
+          <span className="daily-done-score">{record.score}/10</span>
+          <span aria-hidden="true">{gridRows(record.review).join(" ")}</span>
+        </p>
+      )}
+      <button type="button" className="daily-play" onClick={onOpen}>
+        {action}
+      </button>
+    </div>
+  );
+}
 
 export default function HomeScreen({ onSelectMode }) {
   return (
@@ -112,18 +149,7 @@ export default function HomeScreen({ onSelectMode }) {
             </Suspense>
           </div>
 
-          {/* The daily challenge arrives in M3 (docs/GOAL.md); until then the
-              card holds its place so the hero doesn't change shape when it does. */}
-          <div className="daily-card">
-            <div className="daily-head">
-              <span className="daily-badge">Today</span>
-              <span className="daily-date">{today}</span>
-            </div>
-            <h2 className="daily-title">Daily Challenge</h2>
-            <button type="button" className="daily-play" disabled>
-              Coming soon
-            </button>
-          </div>
+          <DailyCard onOpen={() => onSelectMode("daily")} />
         </section>
 
         <main className="home-modes">

@@ -65,7 +65,7 @@
 .home-nav-link:hover,
 .mode-play-btn:hover,
 .globe-reset:hover,
-.daily-play:not(:disabled):hover {
+.daily-play:hover {
   transform: translate(1px, 1px);
   box-shadow: 2px 2px 0px #111;
 }
@@ -73,7 +73,7 @@
 .home-nav-link:active,
 .mode-play-btn:active,
 .globe-reset:active,
-.daily-play:not(:disabled):active {
+.daily-play:active {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0px #111;
 }
@@ -159,6 +159,28 @@
   color: #6E6E7A;
 }
 
+/* Pushed to the right end of the head row. */
+.daily-streak {
+  margin-left: auto;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* Today's result once it's played: the score and the share squares. */
+.daily-done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: -0.4rem 0 1rem;
+  font-size: 1.05rem;
+}
+
+.daily-done-score {
+  font-weight: 800;
+}
+
 .daily-title {
   margin: 0 0 1rem;
   font-size: 1.6rem;
@@ -180,14 +202,6 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
-/* Not available yet: the raised OFF face of the toggles (#1a1a1a on #e2ddd2,
-   12.6:1), flat, so it reads as unpressable rather than as a faded orange. */
-.daily-play:disabled {
-  background: #e2ddd2;
-  color: #1a1a1a;
-  box-shadow: none;
-  cursor: default;
-}
 
 /* ---- Modes ---- */
 
@@ -612,7 +626,7 @@
 @media (hover: none) {
   .home-nav-link:hover,
   .mode-play-btn:hover,
-  .daily-play:not(:disabled):hover,
+  .daily-play:hover,
   .globe-btn:hover,
   .globe-reset:hover {
     transform: none;
@@ -621,7 +635,7 @@
 
   .home-nav-link:active,
   .mode-play-btn:active,
-  .daily-play:not(:disabled):active,
+  .daily-play:active,
   .globe-btn:active,
   .globe-reset:active {
     transform: translate(2px, 2px);

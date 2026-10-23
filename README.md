@@ -51,6 +51,7 @@ src/
   App.jsx                 route → screen; every mode is code-split (React.lazy)
   routes.js  router.js    the page table and a small History API router
   modes/                  one plain-JS definition per mode: pool, matcher, hints
+  daily/                  the Daily Challenge: plan, local save, share grid
   quiz/
     QuizScreen.jsx         a mode's game, then its results (Play again remounts)
     QuizGame.jsx           the shared engine that runs any mode's ten rounds
@@ -70,6 +71,10 @@ scripts/
   fetch-satellite.js       downloads the imagery from the Google Static Maps API
   build-favicon.js         generates public/favicon.svg
 ```
+
+The Daily Challenge (`/omni-geo-quiz/daily`) is ten mixed rounds, the same for
+everyone on the same date, with a shareable emoji grid and a streak kept in the
+browser.
 
 Every page has its own URL (`/omni-geo-quiz/world-airport` and so on). At build
 time `vite.config.js` writes a copy of `index.html` into each route's folder, so

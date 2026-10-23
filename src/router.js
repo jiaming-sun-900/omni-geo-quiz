@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { ROUTES, pageTitle } from "./routes";
 
-// A router small enough to read in one go: the app has nine flat pages and no
+// A router small enough to read in one go: the app has ten flat pages and no
 // parameters, so the History API plus one subscription covers it.
 //
 // The base path (/omni-geo-quiz/) comes from Vite. Paths are compared without
