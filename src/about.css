@@ -1,6 +1,5 @@
-/* The About page: a reading column of cards in the design system's style. Its
-   Home button reuses .home-nav-link from home.css, which the entry bundle
-   always carries. */
+/* The About page: one card in the design system's style. Its Home button
+   reuses .home-nav-link from home.css, which the entry bundle always carries. */
 
 .about {
   width: 100%;
@@ -17,7 +16,7 @@
 }
 
 .about h1 {
-  margin: 0 0 0.6rem;
+  margin: 0 0 1.25rem;
   font-size: 2.6rem;
   font-weight: 800;
   line-height: 1.1;
@@ -29,52 +28,20 @@
   outline: none;
 }
 
-.about-lead {
-  margin: 0 0 2rem;
-  font-size: 1.15rem;
-}
-
 .about-card {
-  margin-bottom: 1.5rem;
-  padding: 1.25rem 1.4rem;
+  padding: 1.4rem 1.5rem;
   background: #fff;
   border: 2px solid #1a1a1a;
   border-radius: 12px;
   box-shadow: 5px 5px 0px #111;
 }
 
-.about-card h2 {
-  margin: 0 0 0.6rem;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 1rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.about-card p,
-.about-card ul,
-.about-card dl {
+.about-card p {
   margin: 0;
 }
 
-.about-card ul {
-  padding-left: 1.2rem;
-}
-
-.about-card li + li {
-  margin-top: 0.45rem;
-}
-
-.about-card dt {
-  font-weight: 700;
-}
-
-.about-card dd {
-  margin: 0 0 0.7rem;
-}
-
-.about-card dd:last-child {
-  margin-bottom: 0;
+.about-card p + p {
+  margin-top: 0.9rem;
 }
 
 .about a {
@@ -90,10 +57,6 @@
 
   .about h1 {
     font-size: 2rem;
-  }
-
-  .about-lead {
-    font-size: 1.05rem;
   }
 
   .about-card {

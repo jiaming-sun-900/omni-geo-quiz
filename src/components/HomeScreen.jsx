@@ -9,77 +9,59 @@ import "../home.css";
 const Globe = lazy(() => import("./Globe"));
 
 // Stand-in shown while that chunk is in flight. It reuses the real widget's
-// class names so it occupies exactly the same rows (disc + dots + controls +
-// Reset View + credit) and the column can't reflow when the globe arrives; only the disc
+// class names so it occupies exactly the same space (the disc and the one
+// control row) and the hero can't reflow when the globe arrives; only the disc
 // draws anything, as a retro-styled empty circle.
 function GlobePlaceholder() {
-  const reserved = { visibility: "hidden" };
   return (
     <div className="globe-wrap" aria-hidden="true">
-      <div className="globe-disc">
-        <div
-          style={{
-            width: "80%",
-            height: "80%",
-            margin: "10%",
-            borderRadius: "50%",
-            background: "#FAF7F4",
-            border: "2px solid #1a1a1a",
-            boxShadow: "3px 3px 0px #111",
-          }}
-        />
+      <div className="globe-stage">
+        <div className="globe-disc">
+          <div
+            style={{
+              width: "80%",
+              height: "80%",
+              margin: "10%",
+              borderRadius: "50%",
+              background: "#FAF7F4",
+              border: "2px solid #1a1a1a",
+              boxShadow: "3px 3px 0px #111",
+            }}
+          />
+        </div>
       </div>
-      <div className="globe-dots" style={reserved}>
-        <button className="globe-dot active" disabled tabIndex={-1} />
-      </div>
-      <div className="globe-controls" style={reserved}>
+      <div className="globe-bar" style={{ visibility: "hidden" }}>
         <button className="globe-btn" disabled tabIndex={-1}>
           ⏸
         </button>
       </div>
-      <button className="globe-reset" style={reserved} disabled tabIndex={-1}>
-        Reset View
-      </button>
-      <p className="globe-credit" style={reserved}>
-        Planet textures Solar System Scope · CC BY 4.0
-      </p>
     </div>
   );
 }
 
 // The menu, grouped so it can grow past one screen. Each mode is one card with
-// a button per variant; `slug` is the route (see routes.js). The variant
-// buttons replaced a Blank Map / Satellite pop-up, which doesn't scale to more
-// than a handful of modes and hid what each tile led to.
+// a button per variant; `slug` is the route (see routes.js).
 const SECTIONS = [
   {
     title: "United States",
     modes: [
-      {
-        num: "I.",
-        icon: "🗺️",
-        name: "US State Quiz",
-        blurb: "A red dot on a blank map. Which state is it in?",
-        play: [{ label: "Blank Map", icon: "🗺️", slug: "us-state" }],
-      },
+      { num: "I.", icon: "🗺️", name: "US State Quiz", play: [["Blank Map", "us-state"]] },
       {
         num: "II.",
         icon: "📍",
         name: "US City Quiz",
-        blurb: "62 cities: find them on a blank map, or name them from orbit.",
         play: [
-          { label: "Blank Map", icon: "🗺️", slug: "us-city" },
-          { label: "Satellite", icon: "🛰️", slug: "us-city-satellite" },
+          ["Blank Map", "us-city"],
+          ["Satellite", "us-city-satellite"],
         ],
       },
       {
         num: "III.",
         icon: "✈️",
         name: "US Airport Quiz",
-        blurb: "Hubs, runways and terminals, by code, name or city.",
         play: [
-          { label: "Blank Map", icon: "🗺️", slug: "us-airport" },
-          { label: "Satellite", icon: "🛰️", slug: "us-airport-satellite" },
+          ["Blank Map", "us-airport"],
+          ["Satellite", "us-airport-satellite"],
         ],
       },
     ],
@@ -87,23 +69,13 @@ const SECTIONS = [
   {
     title: "World",
     modes: [
-      {
-        num: "IV.",
-        icon: "🌍",
-        name: "World City Quiz",
-        blurb: "54 cities on six continents, seen from above.",
-        play: [{ label: "Satellite", icon: "🛰️", slug: "world-city" }],
-      },
-      {
-        num: "V.",
-        icon: "🛫",
-        name: "World Airport Quiz",
-        blurb: "60 of the world's great airports, from Heathrow to Haneda.",
-        play: [{ label: "Satellite", icon: "🛰️", slug: "world-airport" }],
-      },
+      { num: "IV.", icon: "🌍", name: "World City Quiz", play: [["Satellite", "world-city"]] },
+      { num: "V.", icon: "🛫", name: "World Airport Quiz", play: [["Satellite", "world-airport"]] },
     ],
   },
 ];
+
+const VARIANT_ICON = { "Blank Map": "🗺️", Satellite: "🛰️" };
 
 // Today's date as the daily card shows it, e.g. "Fri, Oct 23".
 const today = new Date().toLocaleDateString("en-US", {
@@ -125,42 +97,38 @@ export default function HomeScreen({ onSelectMode }) {
           </a>
         </nav>
 
+        {/* A Z: the title top-left, where the eye lands first; across to the
+            globe; back down-left to the Daily Challenge. On a phone the three
+            stack in that same order. Laid out with grid areas in home.css. */}
         <section className="home-hero">
+          <div className="home-head">
+            <h1 className="home-title">Omni Geo Quiz</h1>
+            <p className="home-tagline">Name cities and airports from above.</p>
+          </div>
+
           <div className="home-globe">
             <Suspense fallback={<GlobePlaceholder />}>
               <Globe />
             </Suspense>
           </div>
 
-          <div className="home-intro">
-            <h1 className="home-title">Omni Geo Quiz</h1>
-            <p className="home-tagline">
-              How well do you know the world from above? Name cities and airports
-              from blank maps and satellite images.
-            </p>
-
-            {/* The daily challenge arrives in M3 (docs/GOAL.md); until then the
-                card holds its place so the hero doesn't change shape when it does. */}
-            <div className="daily-card">
-              <div className="daily-head">
-                <span className="daily-badge">Today</span>
-                <span className="daily-date">{today}</span>
-              </div>
-              <h2 className="daily-title">Daily Challenge</h2>
-              <p className="daily-text">
-                Ten mixed rounds, the same for everyone today. Share your score
-                and keep your streak going.
-              </p>
-              <button type="button" className="daily-play" disabled>
-                Coming soon
-              </button>
+          {/* The daily challenge arrives in M3 (docs/GOAL.md); until then the
+              card holds its place so the hero doesn't change shape when it does. */}
+          <div className="daily-card">
+            <div className="daily-head">
+              <span className="daily-badge">Today</span>
+              <span className="daily-date">{today}</span>
             </div>
+            <h2 className="daily-title">Daily Challenge</h2>
+            <button type="button" className="daily-play" disabled>
+              Coming soon
+            </button>
           </div>
         </section>
 
-        <main className="home-modes" id="modes">
+        <main className="home-modes">
           {SECTIONS.map((section) => (
-            <section key={section.title} className="mode-section" aria-labelledby={`sec-${section.title}`}>
+            <section key={section.title} aria-labelledby={`sec-${section.title}`}>
               <h2 className="mode-section-title" id={`sec-${section.title}`}>
                 {section.title}
               </h2>
@@ -174,18 +142,17 @@ export default function HomeScreen({ onSelectMode }) {
                       </span>
                       <h3 className="mode-name">{m.name}</h3>
                     </div>
-                    <p className="mode-blurb">{m.blurb}</p>
                     <div className="mode-play">
-                      {m.play.map((v) => (
+                      {m.play.map(([label, slug]) => (
                         <button
-                          key={v.slug}
+                          key={slug}
                           type="button"
                           className="mode-play-btn"
-                          onClick={() => onSelectMode(v.slug)}
+                          onClick={() => onSelectMode(slug)}
                           // The visible label is just "Satellite"; say which quiz.
-                          aria-label={`${m.name}, ${v.label}`}
+                          aria-label={`${m.name}, ${label}`}
                         >
-                          <span aria-hidden="true">{v.icon}</span> {v.label}
+                          <span aria-hidden="true">{VARIANT_ICON[label]}</span> {label}
                         </button>
                       ))}
                     </div>
@@ -196,28 +163,27 @@ export default function HomeScreen({ onSelectMode }) {
           ))}
         </main>
 
+        {/* The planet photos are CC BY 4.0, so their credit has to be on the page
+            that shows them; it moved here from under the globe. */}
         <footer className="home-footer">
-          <p className="home-footer-links">
-            <button type="button" className="home-footer-link" onClick={() => onSelectMode("about")}>
-              About &amp; credits
-            </button>
-            <span aria-hidden="true">·</span>
-            <a className="home-footer-link" href="https://jiaming-sun-900.github.io" target="_blank" rel="noreferrer">
-              Meet the Dev
+          <p>
+            Satellite imagery © Google · Planet textures{" "}
+            <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">
+              Solar System Scope
             </a>
-            <span aria-hidden="true">·</span>
-            <a
-              className="home-footer-link"
-              href="https://github.com/jiaming-sun-900/omni-geo-quiz"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Source on GitHub
+            ,{" "}
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+              CC BY 4.0
             </a>
           </p>
-          <p className="home-footer-credit">
-            Satellite imagery © Google. Planet textures by Solar System Scope, CC BY 4.0.
-            Free, no ads, no tracking.
+          <p>
+            <button type="button" className="home-footer-link" onClick={() => onSelectMode("about")}>
+              About
+            </button>
+            {" · "}
+            <a href="https://github.com/jiaming-sun-900/omni-geo-quiz" target="_blank" rel="noreferrer">
+              GitHub
+            </a>
           </p>
         </footer>
       </div>

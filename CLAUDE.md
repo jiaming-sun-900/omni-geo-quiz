@@ -94,9 +94,8 @@ costs a derived copy of upstream data in the repo — not worth it. The only rea
 lever left is removing the 3D globe itself.
 
 The Globe `<Suspense>` fallback reuses the real `.globe-*` class names and keeps
-the four control rows (dots, transport controls, Reset View, texture credit) at
-`visibility: hidden`, so it reserves exactly the same five rows and the home
-screen doesn't reflow when the globe arrives. **Adding a row to Globe means
+the control row at `visibility: hidden`, so it reserves exactly the same space and
+the home screen doesn't reflow when the globe arrives. **Adding a row to Globe means
 adding it to `GlobePlaceholder` too.**
 
 **USMap.jsx** is the shared map component used by the map-based quiz modes (State, City, and the Airport Blank Map). It renders an SVG with:
@@ -468,11 +467,19 @@ coastline misses, not errors. **`npm run check` re-runs the US point-in-state sw
   failure. Without it a failed load left the *previous* planet's texture on the sphere while
   the label read the new one, so an unreachable Mars looked exactly like Earth.
 - **The textures are CC BY 4.0 (Solar System Scope), and the licence requires
-  attribution** — `.globe-credit` under the Reset View button carries it. It needs the same
-  `position: relative` + `z-index: 1` + `pointer-events: auto` treatment as
-  `.globe-reset`, because the oversized globe canvas overflows down across that row and
-  would otherwise eat the links' clicks. `GlobePlaceholder` in `HomeScreen.jsx` reserves
-  the row too, so the column still can't reflow when the globe chunk lands.
+  attribution**: the home footer carries it (and About repeats it). It used to be a line
+  under the globe; it moved with the player redesign below.
+- **The player is one row**: play/pause, a dot per planet (click, or drag across them),
+  and the planet's name, in a three-track grid whose outer tracks are equal so the dots
+  stay on the globe's axis. It used to be four rows: dots; previous / play / next plus a
+  radial speed menu; Reset View; the credit. The dots already switch planets, so previous
+  and next went, and the speed menu went with them. **Reset View only exists after a
+  drag** (`moved`, set from the OrbitControls `start` event) and overlays the disc's
+  bottom-right corner, outside the sphere, so appearing moves nothing.
+- **`.globe-stage` is `display: flex` on purpose.** It keeps the disc a flex item, which
+  contains the canvas's `-75%` margins. As a plain block, the disc let them collapse
+  straight through it and the stage, and the whole globe rode 330px up over the control
+  row.
 - **The grab cursor over the planet is a raycast, not CSS.** `cursor: grab` on
   `.globe-disc canvas` would be far simpler and is wrong: the canvas is 2.5× the visible
   disc (see the next note) and fully transparent outside the planet, so the grab hand would
@@ -573,9 +580,12 @@ The established visual language across all screens. New UI should conform to it.
   scrolling pages: home is a hero plus grouped mode cards so it can keep growing, About
   is a reading column, and the results list all 10 rounds.
 - **Home screen** (`src/home.css`, imported by HomeScreen so it is in the entry bundle,
-  which the globe placeholder needs before the lazy Globe chunk arrives): a hero (globe,
-  title, tagline, the Daily Challenge card) and then `.mode-section`s of `.mode-card`s in
-  an auto-fill grid, then a footer with the credits. The globe widget's rules moved there
+  which the globe placeholder needs before the lazy Globe chunk arrives). The hero is a
+  **Z**, laid out with grid areas: title top-left (where the eye lands first), the globe
+  on the right, the Daily Challenge bottom-left; stacked, the same three go title, globe,
+  Daily Challenge. Then `UNITED STATES` / `WORLD` groups of `.mode-card`s (name and
+  variant buttons, no blurb) in an auto-fill grid, then a footer with the credits. Copy is
+  kept to the minimum throughout, About included: one card, four short lines. The globe widget's rules moved there
   from `App.css` unchanged apart from the disc size. Everything except the globe column
   is `position: relative; z-index: 1`, because the globe canvas is drawn 2.5x its disc and
   keeps pointer events, so its transparent overflow would otherwise eat clicks on the
@@ -596,10 +606,9 @@ desktop layout untouched; the tiers only add overrides below that.
 - **Root scale** (`src/index.css`): `19px` → `18px` (≤900) → `17px` (≤600) → `16px` (≤400)
   → `15px` (landscape under 480px tall). Nearly every size in the app is a `rem`, so these
   five values rescale the whole UI at once.
-- **Home tiers** live in `home.css` and are width-only: ≤900px stacks the hero (globe on
-  top, intro centred), ≤600px is phone sizing, and landscape phones (≤900px wide, ≤520px
-  tall) go back to a smaller two-column hero, because the stack put only the globe on
-  their first screen. The old home screen also had four height tiers, and a table here
+- **Home tiers** live in `home.css` and are width-only: ≤900px stacks the hero, ≤600px is
+  phone sizing, and landscape phones (≤900px wide, ≤520px tall) go back to a smaller Z,
+  because the stack put only the globe on their first screen. The old home screen also had four height tiers, and a table here
   about keeping them disjoint; they existed to fit five menu rows on one screen without
   scrolling, and went with the scrolling layout.
 - **Tier 2 — ≤1024px *or* ≤620px tall**: the quiz chrome leaves the corners and joins the
@@ -667,12 +676,11 @@ Other pieces of the system:
   `@media (hover: none)` the retro press animation is driven by `:active` instead of
   `:hover`, which would otherwise stick after a tap. `@media (pointer: coarse)` gives the
   ON/OFF toggles and the Reset View button a 34px minimum height.
-  `prefers-reduced-motion` disables the dot pop/ripple and the globe's fan animation.
+  `prefers-reduced-motion` disables the dot pop/ripple, the planet-dot pulse and the
+  Reset View fade-in.
 - **Never clip, scroll instead**: the results screen centres with auto margins rather
   than `align-items/justify-content: center`, because auto margins collapse to zero once
   the content is taller than the container, so the top of the page stays reachable.
-- **The globe's speed fan** opens to the left below 820px (`.globe-fan { right: 100% }`),
-  since its button sits close to the right edge once the globe column is full-width.
 
 ## GitHub Pages Deployment
 

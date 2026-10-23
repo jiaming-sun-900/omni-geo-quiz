@@ -14,27 +14,16 @@ const RESUME_DELAY = 1500; // ms paused after a drag before auto-rotation resume
 const RESET_DURATION = 600; // ms for the reset-view camera animation
 const ORIGIN = new THREE.Vector3(0, 0, 0);
 
-// Base auto-rotation: one full turn every 20 seconds, scaled by the speed
-// multiplier and integrated with delta-time so it's frame-rate independent.
+// Auto-rotation: one full turn every 20 seconds, integrated with delta-time so
+// it's frame-rate independent.
 const BASE_SPEED = (2 * Math.PI) / 20; // rad per second
-
-const SPEEDS = [0.2, 1.0, 5.0, 10.0];
-
-// Radial speed menu: the four options fan out across the right semicircle at
-// equal angular intervals (-60° / -20° / +20° / +60° from horizontal right).
-// Positions are precomputed (px from the button's right-center).
-const FAN_RADIUS = 92;
-const FAN_POS = [-80, -26.67, 26.67, 80].map((deg) => {
-  const a = (deg * Math.PI) / 180;
-  return { x: Math.cos(a) * FAN_RADIUS, y: Math.sin(a) * FAN_RADIUS };
-});
 
 // Planet textures are self-hosted under public/textures/ rather than hotlinked
 // from Wikimedia Commons. They used to be fetched from the Commons CDN at click
 // time, which made a core piece of the home screen depend on a third party at
 // runtime — an offline or filtered network, or a renamed Commons file, silently
 // fell back to a flat colour. All five are CC BY 4.0 by Solar System Scope; the
-// credit is rendered under the globe controls (see `.globe-credit`).
+// credit is in the home page footer (and on About).
 const TEX_BASE = `${import.meta.env.BASE_URL}textures/`;
 
 // The swappable spheres. Earth uses the locally-painted canvas texture
@@ -104,15 +93,15 @@ export default function Globe() {
   const containerRef = useRef(null);
   const apiRef = useRef(null);
 
-  // Refs mirror the playback state so the animation loop (set up once) can read
-  // the latest values without re-running the Three.js effect.
+  // A ref mirrors the play state so the animation loop (set up once) can read
+  // the latest value without re-running the Three.js effect.
   const playingRef = useRef(true);
-  const speedRef = useRef(1.0);
 
   const [playing, setPlaying] = useState(true);
-  const [speed, setSpeed] = useState(1.0);
   const [planetIndex, setPlanetIndex] = useState(0);
-  const [speedOpen, setSpeedOpen] = useState(false);
+  // Whether the user has dragged the view away from its default. Reset View is
+  // only offered then: before any drag it has nothing to reset.
+  const [moved, setMoved] = useState(false);
 
   const togglePlay = () =>
     setPlaying((p) => {
@@ -120,14 +109,6 @@ export default function Globe() {
       playingRef.current = next;
       return next;
     });
-
-  const changeSpeed = (s) => {
-    speedRef.current = s;
-    setSpeed(s);
-  };
-
-  const cyclePlanet = (dir) =>
-    setPlanetIndex((i) => (i + dir + PLANETS.length) % PLANETS.length);
 
   // Drag-to-scrub: while the mouse is held down over the dots row, switch to
   // whichever dot the cursor is currently over, so a single click-and-drag can
@@ -164,19 +145,6 @@ export default function Globe() {
     window.addEventListener("mouseup", endScrub);
     return () => window.removeEventListener("mouseup", endScrub);
   }, []);
-
-  // Click-toggle speed menu: clicking the button opens/closes the fan; a click
-  // anywhere outside the speed component closes it.
-  const speedMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (!speedOpen) return;
-    const onDocClick = (e) => {
-      if (!speedMenuRef.current?.contains(e.target)) setSpeedOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [speedOpen]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -350,6 +318,7 @@ export default function Globe() {
     controls.addEventListener("start", () => {
       dragSuspended = true;
       clearResume();
+      setMoved(true);
     });
     controls.addEventListener("end", () => {
       clearResume();
@@ -470,7 +439,7 @@ export default function Globe() {
         }
       } else {
         if (playingRef.current && !dragSuspended) {
-          globe.rotation.y += BASE_SPEED * speedRef.current * delta;
+          globe.rotation.y += BASE_SPEED * delta;
         }
         controls.update();
       }
@@ -510,106 +479,59 @@ export default function Globe() {
     apiRef.current?.setPlanet(PLANETS[planetIndex].id);
   }, [planetIndex]);
 
+  const resetView = () => {
+    apiRef.current?.reset();
+    setMoved(false);
+  };
+
+  // One row under the planet: play/pause, a dot per planet, and the planet's
+  // name. There used to be four rows (dots; previous / play / next plus a radial
+  // speed menu; Reset View; the texture credit), which competed with the Daily
+  // Challenge for attention. The dots already switch planets, so previous / next
+  // went; the speed menu went; Reset View only appears once there is something to
+  // reset; the credit moved to the home footer.
   return (
     <div className="globe-wrap">
-      <div className="globe-disc" ref={containerRef} aria-hidden="true" />
-
-      <div
-        className="globe-dots"
-        ref={dotsRef}
-        onMouseDown={startScrub}
-        onMouseMove={scrub}
-      >
-        {PLANETS.map((p, i) => (
-          <button
-            key={p.id}
-            className={`globe-dot${i === planetIndex ? " active" : ""}`}
-            style={{ "--planet-color": p.color }}
-            onClick={() => setPlanetIndex(i)}
-            aria-label={p.name}
-            aria-pressed={i === planetIndex}
-          />
-        ))}
+      <div className="globe-stage">
+        <div className="globe-disc" ref={containerRef} aria-hidden="true" />
+        {moved && (
+          <button type="button" className="globe-reset" onClick={resetView}>
+            Reset view
+          </button>
+        )}
       </div>
 
-      <div className="globe-controls">
+      <div className="globe-bar">
         <button
-          className="globe-btn"
-          onClick={() => cyclePlanet(-1)}
-          aria-label="Previous planet"
-        >
-          ⏮
-        </button>
-        <button
+          type="button"
           className="globe-btn"
           onClick={togglePlay}
           aria-label={playing ? "Pause rotation" : "Play rotation"}
         >
           {playing ? "⏸" : "▶"}
         </button>
-        <button
-          className="globe-btn"
-          onClick={() => cyclePlanet(1)}
-          aria-label="Next planet"
+        <div
+          className="globe-dots"
+          ref={dotsRef}
+          onMouseDown={startScrub}
+          onMouseMove={scrub}
         >
-          ⏭
-        </button>
-
-        <div className="globe-speed" ref={speedMenuRef}>
-          <button
-            className="globe-btn globe-speed-btn"
-            aria-label="Rotation speed"
-            onClick={() => setSpeedOpen((o) => !o)}
-          >
-            {speed.toFixed(1)}×
-          </button>
-          <div className={`globe-fan${speedOpen ? " open" : ""}`}>
-            <div className="globe-fan-overlay" aria-hidden="true" />
-            {SPEEDS.map((s, i) => (
-              <button
-                key={s}
-                className={`globe-fan-btn${s === speed ? " active" : ""}`}
-                style={{
-                  "--x": `${FAN_POS[i].x}px`,
-                  "--y": `${FAN_POS[i].y}px`,
-                  "--d": `${i * 30}ms`,
-                }}
-                onClick={() => {
-                  changeSpeed(s);
-                  setSpeedOpen(false);
-                }}
-              >
-                {s.toFixed(1)}×
-              </button>
-            ))}
-          </div>
+          {PLANETS.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`globe-dot${i === planetIndex ? " active" : ""}`}
+              style={{ "--planet-color": p.color }}
+              onClick={() => setPlanetIndex(i)}
+              aria-label={p.name}
+              aria-pressed={i === planetIndex}
+            />
+          ))}
         </div>
+        <span className="globe-name" aria-hidden="true">
+          {PLANETS[planetIndex].name}
+        </span>
       </div>
-
-      <button className="globe-reset" onClick={() => apiRef.current?.reset()}>
-        Reset View
-      </button>
-
-      {/* CC BY 4.0 requires attribution, and the four planet photos are used
-          under it. Kept to one small line so the home column stays short. */}
-      <p className="globe-credit">
-        Planet textures{" "}
-        <a
-          href="https://www.solarsystemscope.com/textures/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Solar System Scope
-        </a>{" "}
-        ·{" "}
-        <a
-          href="https://creativecommons.org/licenses/by/4.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          CC BY 4.0
-        </a>
-      </p>
     </div>
   );
 }
