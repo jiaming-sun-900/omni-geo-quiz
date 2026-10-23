@@ -258,6 +258,34 @@ for (const [dir, names] of [
   }
 }
 
+// ---- Continent modes ----
+
+// Every world entry names a continent the chips offer (a typo would drop it
+// from every continent game), each continent game has rounds to play, and its
+// hints still say something once the continent hint is gone.
+const { REGIONS, REGIONAL_MODES, forRegion } = await load("src/modes/regions.js");
+const regionNames = new Set(REGIONS.map((r) => r.name));
+for (const def of [MODE.worldCity, MODE.worldAirport]) {
+  for (const entry of def.pool) {
+    checks++;
+    if (!regionNames.has(entry.region)) fail(`${def.slug}: ${def.reveal(entry)} has unknown region "${entry.region}"`);
+  }
+}
+for (const mode of REGIONAL_MODES) {
+  const base = mode.slug === "world-city" ? MODE.worldCity : MODE.worldAirport;
+  for (const region of REGIONS) {
+    const def = forRegion(base, region);
+    checks++;
+    if (def.pool.length < 5) fail(`${def.slug}: only ${def.pool.length} entries`);
+    for (const entry of def.pool) {
+      for (const hint of def.hints) {
+        checks++;
+        if (!hint(entry)) fail(`${def.slug}: empty hint for ${def.reveal(entry)}`);
+      }
+    }
+  }
+}
+
 // ---- Daily Challenge plans ----
 
 // Two years of days from the first challenge: every plan is the ten slots in

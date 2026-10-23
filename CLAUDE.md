@@ -38,7 +38,8 @@ interactive Three.js globe.
 **Every page has a URL.** `src/routes.js` is the one table of pages (slug +
 title): `""` (home), `daily`, the seven modes (`us-state`, `us-city`,
 `us-city-satellite`, `us-airport`, `us-airport-satellite`, `world-city`,
-`world-airport`) and `about`, under the `/omni-geo-quiz/` base. `src/router.js` is
+`world-airport`), the twelve continent pages (`world-city-europe`,
+`world-airport-oceania`, ...) and `about`, under the `/omni-geo-quiz/` base. `src/router.js` is
 a ~40-line History API router (`useRoute`, `navigate`, `setTitleFor`); the pages
 are flat with no parameters, so no router library. `navigate` scrolls to the top,
 since the home page scrolls and the next page would otherwise open at its offset. Browser Back works, and the tab title follows
@@ -185,6 +186,18 @@ calendar date, as in Wordle; #1 is 2026-10-23 (`date.js`).
 - `npm run check` builds two years of plans and checks each is the ten slots in order,
   never repeats a place, puts the State dot inside its state, and rebuilds identically;
   and that the first 18 days cover every world city.
+
+**Continent pages** (`src/modes/regions.js`): `forRegion(def, region)` narrows World
+City or World Airport to one continent: the pool filtered on the entry's `region`, and
+the first hint dropped, since "This city is in Europe" is no clue in a Europe-only game.
+The matcher still checks against the whole world pool, so naming a city elsewhere is
+wrong rather than unknown. `routes.js` and `App.jsx` generate the twelve pages from
+`REGIONS` × `REGIONAL_MODES`; the home cards show a chip per continent. A game is
+`roundsFor(def)` rounds (`quiz/rounds.js`): ten, or the whole pool when it is smaller,
+because some continents are thin (Oceania has five airports, North America five
+cities) and ten rounds would repeat. Growing those pools is the open imagery question in
+`docs/GOAL.md`. `npm run check` verifies every world entry's region is one the chips
+offer, every continent has at least five entries, and the remaining hints all render.
 
 **Screen readers** hear feedback and hints through one `.sr-only` `aria-live`
 region that QuizGame keeps mounted and updates. The feedback and hint bubbles

@@ -44,6 +44,7 @@
 /* The design system's button, at nav size. */
 .home-nav-link,
 .mode-play-btn,
+.mode-chip,
 .globe-reset {
   background: #fff;
   border: 2px solid #1a1a1a;
@@ -64,6 +65,7 @@
 
 .home-nav-link:hover,
 .mode-play-btn:hover,
+.mode-chip:hover,
 .globe-reset:hover,
 .daily-play:hover {
   transform: translate(1px, 1px);
@@ -72,6 +74,7 @@
 
 .home-nav-link:active,
 .mode-play-btn:active,
+.mode-chip:active,
 .globe-reset:active,
 .daily-play:active {
   transform: translate(2px, 2px);
@@ -286,6 +289,22 @@
 .mode-play-btn {
   font-size: 0.95rem;
   padding: 0.5rem 0.95rem;
+}
+
+/* One continent each: the same button, a size down, so they read as options
+   on the main button rather than as more modes. */
+.mode-regions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: -0.35rem;
+}
+
+.mode-chip {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0px #111;
 }
 
 /* ---- Footer ---- */
@@ -626,6 +645,7 @@
 @media (hover: none) {
   .home-nav-link:hover,
   .mode-play-btn:hover,
+  .mode-chip:hover,
   .daily-play:hover,
   .globe-btn:hover,
   .globe-reset:hover {
@@ -635,11 +655,17 @@
 
   .home-nav-link:active,
   .mode-play-btn:active,
+  .mode-chip:active,
   .daily-play:active,
   .globe-btn:active,
   .globe-reset:active {
     transform: translate(2px, 2px);
     box-shadow: 1px 1px 0px #111;
+  }
+
+  /* Chips keep their smaller resting shadow. */
+  .mode-chip:hover {
+    box-shadow: 2px 2px 0px #111;
   }
 }
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import QuizGame, { TOTAL_ROUNDS } from "./QuizGame";
+import QuizGame from "./QuizGame";
+import { roundsFor } from "./rounds";
 import ResultsScreen from "../components/ResultsScreen";
 
 // A mode's whole screen: the game, then its results. Play Again bumps
@@ -16,7 +17,7 @@ export default function QuizScreen({ def, onHome }) {
     return (
       <ResultsScreen
         score={result.score}
-        total={TOTAL_ROUNDS}
+        total={roundsFor(def)}
         review={result.review}
         onPlayAgain={() => {
           setResult(null);

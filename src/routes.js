@@ -1,3 +1,5 @@
+import { REGIONS, REGIONAL_MODES } from "./modes/regions.js";
+
 // Every page with its own URL. Plain data, because two very different places
 // read it: the app's router (src/router.js), and vite.config.js, which writes a
 // copy of index.html into each route's folder at build time so a deep link
@@ -13,6 +15,10 @@ export const ROUTES = [
   { slug: "us-airport-satellite", title: "US Airport Quiz (Satellite)" },
   { slug: "world-city", title: "World City Quiz" },
   { slug: "world-airport", title: "World Airport Quiz" },
+  // One page per continent for each world mode: world-city-europe and so on.
+  ...REGIONAL_MODES.flatMap((mode) =>
+    REGIONS.map((r) => ({ slug: `${mode.slug}-${r.slug}`, title: `${mode.title}: ${r.name}` }))
+  ),
   { slug: "about", title: "About" },
 ];
 

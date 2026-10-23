@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { dateKey, dayNumber } from "../daily/date";
 import { getDay, getStats } from "../daily/store";
 import { gridRows } from "../daily/share";
+import { REGIONS } from "../modes/regions";
 import "../home.css";
 
 // The globe drags in Three.js, OrbitControls, d3-geo, topojson-client and the
@@ -72,8 +73,21 @@ const SECTIONS = [
   {
     title: "World",
     modes: [
-      { num: "IV.", icon: "🌍", name: "World City Quiz", play: [["Satellite", "world-city"]] },
-      { num: "V.", icon: "🛫", name: "World Airport Quiz", play: [["Satellite", "world-airport"]] },
+      // `byRegion` adds a chip per continent (routes world-city-asia and so on).
+      {
+        num: "IV.",
+        icon: "🌍",
+        name: "World City Quiz",
+        play: [["Satellite", "world-city"]],
+        byRegion: true,
+      },
+      {
+        num: "V.",
+        icon: "🛫",
+        name: "World Airport Quiz",
+        play: [["Satellite", "world-airport"]],
+        byRegion: true,
+      },
     ],
   },
 ];
@@ -182,6 +196,21 @@ export default function HomeScreen({ onSelectMode }) {
                         </button>
                       ))}
                     </div>
+                    {m.byRegion && (
+                      <div className="mode-regions">
+                        {REGIONS.map((r) => (
+                          <button
+                            key={r.slug}
+                            type="button"
+                            className="mode-chip"
+                            onClick={() => onSelectMode(`${m.play[0][1]}-${r.slug}`)}
+                            aria-label={`${m.name}, ${r.name} only`}
+                          >
+                            {r.short}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

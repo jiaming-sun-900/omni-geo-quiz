@@ -4,8 +4,8 @@ import GuessInput from "../components/GuessInput";
 import AirportGuessInput from "../components/AirportGuessInput";
 import FeedbackBubble from "../components/FeedbackBubble";
 import { useAdvanceOnDismiss } from "../utils/useAdvanceOnDismiss";
+import { roundsFor } from "./rounds";
 
-export const TOTAL_ROUNDS = 10;
 
 // One game of ten rounds. Either `def`, one mode with a random target each
 // round (and Shuffle / New Image), or `plan`, a fixed list of
@@ -69,7 +69,7 @@ export default function QuizGame({
   overlays,
   toggleOverlay,
 }) {
-  const total = plan ? plan.length : TOTAL_ROUNDS;
+  const total = plan ? plan.length : roundsFor(modeDef);
   const used = useRef(new Set());
   const [round, setRound] = useState(() => (initial?.review.length ?? 0) + 1);
   const [score, setScore] = useState(() => initial?.score ?? 0);

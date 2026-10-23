@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import HomeScreen from "./components/HomeScreen";
 import { useRoute, navigate, setTitleFor } from "./router";
+import { REGIONS, REGIONAL_MODES, forRegion } from "./modes/regions";
 import "./App.css";
 
 // Each mode's definition, keyed by its URL slug (see routes.js). Every one is
@@ -8,7 +9,7 @@ import "./App.css";
 // HomeScreen), so the entry bundle is just the shell and the menu: the us-atlas
 // TopoJSON behind the map modes and the Three.js stack behind the globe load
 // only when something asks for them.
-const MODES = {
+const BASE_MODES = {
   "us-state": () => import("./modes/usState"),
   "us-city": () => import("./modes/usCity"),
   "us-city-satellite": () => import("./modes/usCitySatellite"),
@@ -17,6 +18,15 @@ const MODES = {
   "world-city": () => import("./modes/worldCity"),
   "world-airport": () => import("./modes/worldAirport"),
 };
+
+// Plus each world mode narrowed to one continent (world-city-europe, ...).
+const MODES = { ...BASE_MODES };
+for (const mode of REGIONAL_MODES) {
+  for (const region of REGIONS) {
+    MODES[`${mode.slug}-${region.slug}`] = () =>
+      BASE_MODES[mode.slug]().then((m) => ({ default: forRegion(m.default, region) }));
+  }
+}
 
 // One lazy component per mode: it loads the definition and the shared engine
 // together, then renders the engine with that definition.
