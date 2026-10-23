@@ -1,0 +1,1 @@
+import{t as e}from"./MapStage-CMaaB1zD.js";import{i as t,t as n}from"./cities-DPCul_XG.js";var r={slug:`us-city`,pool:n,Stage:e,dot:e=>[e.lng,e.lat],prompt:`Which city is the red dot in?`,input:`city`,hints:[],match:(e,n)=>t(e,n),reveal:e=>`${e.name}, ${e.state}`,review:e=>({answer:`${e.name}, ${e.state}`,wiki:`${e.name}, ${e.state}`,lat:e.lat,lng:e.lng})};export{r as default};
