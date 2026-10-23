@@ -33,6 +33,9 @@ const QUIZZES = Object.fromEntries(
   ])
 );
 
+// Pages that aren't quiz modes, also code-split.
+const AboutScreen = lazy(() => import("./components/AboutScreen"));
+
 export default function App() {
   const route = useRoute();
 
@@ -40,13 +43,23 @@ export default function App() {
     setTitleFor(route);
   }, [route]);
 
+  const goHome = () => navigate("");
+
+  if (route.slug === "about") {
+    return (
+      <Suspense fallback={<div className="mode-loading">Loading…</div>}>
+        <AboutScreen onHome={goHome} />
+      </Suspense>
+    );
+  }
+
   const Quiz = QUIZZES[route.slug];
   if (!Quiz) return <HomeScreen onSelectMode={navigate} />;
 
   return (
     <Suspense fallback={<div className="mode-loading">Loading…</div>}>
       {/* Keyed on the slug, so moving between modes is a fresh mount. */}
-      <Quiz key={route.slug} onHome={() => navigate("")} />
+      <Quiz key={route.slug} onHome={goHome} />
     </Suspense>
   );
 }

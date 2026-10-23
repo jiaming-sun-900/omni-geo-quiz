@@ -73,15 +73,14 @@ the definition and `quiz/QuizScreen` together, behind one `<Suspense>` with the
 its own `<Suspense>`. The definition imports its stage, so a map mode pulls in
 `MapStage` (USMap + the us-atlas TopoJSON) with no second round trip.
 
-Current split: entry **199 kB** (63 kB gzip), `Globe` **648 kB** (178 kB gzip),
+Current split: entry **201 kB** (63 kB gzip; it carries the home page and its styles), `Globe` **648 kB** (178 kB gzip),
 `MapStage` (USMap + us-atlas TopoJSON) 180 kB, the shared engine (`QuizScreen`)
 13 kB, each mode definition 0.4–12 kB.
 
 **Be precise about what splitting Globe buys, because this paragraph has twice
 claimed more than it delivers.** Nearly every visitor lands on
 HomeScreen (deep links to a mode are new and still rare), HomeScreen mounts `<Globe>`, so *almost everyone downloads the Globe
-chunk anyway*. The win is **time-to-paint, not bytes** — the title and the five
-menu rows render immediately instead of waiting on Three.js to download and
+chunk anyway*. The win is **time-to-paint, not bytes** — the title and the menu render immediately instead of waiting on Three.js to download and
 parse. Don't re-justify it as "satellite players skip it"; they don't.
 
 **The Globe chunk cannot be made meaningfully smaller** (measured, so it isn't
@@ -272,10 +271,11 @@ picking `Portland, Maine` no longer scores on the Oregon image.
 
 ## Game Modes
 
-Selected from HomeScreen. The City and Airport tiles open a sub-mode modal (Blank Map
-vs. Satellite) before launching; the two World tiles are satellite-only and launch
-directly. The modal is a `role="dialog"` / `aria-modal` container that moves focus to its
-first option on open and closes on Escape or a backdrop click.
+Selected from HomeScreen, where each mode is a card with one button per variant
+(**Blank Map** / **Satellite**); the two World modes are satellite-only. The buttons
+replaced a Blank Map / Satellite pop-up, which didn't scale past a handful of modes. Each
+button's `aria-label` names the quiz as well ("US City Quiz, Satellite"), since the visible
+label alone is just the variant.
 
 - **US State Quiz** (`modes/usState.js`, `/us-state`) — blank Albers USA map, a random point inside a state; user guesses
   the state name.
@@ -502,10 +502,8 @@ coastline misses, not errors. **`npm run check` re-runs the US point-in-state sw
   information and the accessibility tree didn't: the nine overlay switches carry
   `aria-label` (they had `role="switch"` + `aria-checked` but their label was a sibling
   `<span>`, so they announced as "switch, ON" with no indication of *what*); the Round and
-  Score boxes are `role="status"` so changes are announced at all; the sub-mode modal traps
-  Tab between its two options and restores focus to the menu row that opened it (it already
-  moved focus in and closed on Escape, but Tab escaped behind the backdrop and focus was
-  never given back).
+  Score boxes are `role="status"` so changes are announced at all; the About page, like
+  the results screen, focuses its heading on mount.
 - **Touch targets**: review links are `inline-flex` with `min-height: 40px` (measured
   85×40px). As inline anchors the padding alone did nothing and they were ~28px — below even
   the 34px the same block grants `.push-toggle`.
@@ -523,9 +521,10 @@ coastline misses, not errors. **`npm run check` re-runs the US point-in-state sw
 ### Build, CSS and CI
 
 - **CSS minification**: `vite.config.js` uses Lightning CSS (`transformer` and
-  `cssMinify`) so the modal's `backdrop-filter` keeps both the standard property and an
-  emitted `-webkit-` prefix. The default esbuild minifier collapsed the hand-written pair
-  to just `-webkit-`, breaking the blur in Firefox.
+  `cssMinify`). It was brought in for the old sub-mode modal's `backdrop-filter` (the
+  default esbuild minifier collapsed a hand-written standard + `-webkit-` pair to just
+  `-webkit-`, breaking the blur in Firefox); the modal is gone, but Lightning CSS stays as
+  the prefixer, and the `@supports` convention below is written for its behaviour.
 - **CI** (`.github/workflows/ci.yml`): Node 24, `npm install --no-audit --no-fund` →
   `npm run lint` → `npm run check` → `npm run build`, on push and PR to `main`, with no
   `continue-on-error`.
@@ -569,10 +568,22 @@ The established visual language across all screens. New UI should conform to it.
   without colour.**
 - **Text colours**: secondary/meta text is `#6E6E7A` (4.71:1 on `#FAF7F4`). The former
   `#888` was 3.3–3.5:1, below AA.
-- **Layout**: screens are designed to fit the viewport without scrolling, and size
-  themselves to it. Two deliberate exceptions, both documented below: **ResultsScreen**
-  scrolls (it lists all 10 rounds), and **`.home-screen`** is `overflow-y: auto` so a very
-  short viewport can reach the top of the page instead of clipping it.
+- **Layout**: the quiz screens are designed to fit the viewport without scrolling, and
+  size themselves to it. The **home**, **About** and **results** pages are ordinary
+  scrolling pages: home is a hero plus grouped mode cards so it can keep growing, About
+  is a reading column, and the results list all 10 rounds.
+- **Home screen** (`src/home.css`, imported by HomeScreen so it is in the entry bundle,
+  which the globe placeholder needs before the lazy Globe chunk arrives): a hero (globe,
+  title, tagline, the Daily Challenge card) and then `.mode-section`s of `.mode-card`s in
+  an auto-fill grid, then a footer with the credits. The globe widget's rules moved there
+  from `App.css` unchanged apart from the disc size. Everything except the globe column
+  is `position: relative; z-index: 1`, because the globe canvas is drawn 2.5x its disc and
+  keeps pointer events, so its transparent overflow would otherwise eat clicks on the
+  title, the daily card and the first cards. **`.home-page` clips horizontally, at full
+  width:** unclipped, that same overflow made mobile browsers widen the layout viewport
+  (390px became 495px, so the page zoomed out); clipping on the 76rem `.home` instead
+  would cut Saturn's ring off at its edge on a wide screen. Verified no horizontal
+  overflow on home and About at 320, 360, 390, 768, 1024, 1440 and 1920px.
 - **Map**: a blank white US continental map rendered with the Albers USA projection — no
   state borders or labels visible by default.
 
@@ -585,10 +596,12 @@ desktop layout untouched; the tiers only add overrides below that.
 - **Root scale** (`src/index.css`): `19px` → `18px` (≤900) → `17px` (≤600) → `16px` (≤400)
   → `15px` (landscape under 480px tall). Nearly every size in the app is a `rem`, so these
   five values rescale the whole UI at once.
-- **Tier 1 — ≤900px**: the home screen stacks into a single column; globe, title and menu
-  panel shrink so the whole screen still fits an iPad portrait without scrolling.
-  A separate `901–1220px` block trims the menu type so entry names stay on one line in
-  the narrow two-column layout (tablet landscape / small laptop).
+- **Home tiers** live in `home.css` and are width-only: ≤900px stacks the hero (globe on
+  top, intro centred), ≤600px is phone sizing, and landscape phones (≤900px wide, ≤520px
+  tall) go back to a smaller two-column hero, because the stack put only the globe on
+  their first screen. The old home screen also had four height tiers, and a table here
+  about keeping them disjoint; they existed to fit five menu rows on one screen without
+  scrolling, and went with the scrolling layout.
 - **Tier 2 — ≤1024px *or* ≤620px tall**: the quiz chrome leaves the corners and joins the
   flow. `.state-quiz-header` becomes a real top bar holding Round/Score/Shuffle, the Home
   button is pinned to the container's top-left (the empty half of that same row), and
@@ -602,41 +615,14 @@ desktop layout untouched; the tiers only add overrides below that.
   360, 375, 390, 414 and 768px.
 - **Tier 3 — ≤600px**: phone sizing. The guess form rewraps so the text field gets its own
   full-width row with Hint + Submit sharing the row beneath it (matched via
-  `.guess-form > [type="submit"]`, since the three inputs style Submit differently). The
-  sub-mode modal squares shrink to `min(42vw, 13rem)`.
+  `.guess-form > [type="submit"]`, since the three inputs style Submit differently).
 - **1025–1220px wide (and ≥621px tall)**: the same wrap as the phone tier, because the
   desktop `padding-inline: var(--controls-inset)` (15rem a side) left the text field just
   **82px** wide in that band. The fix wraps the form rather than shrinking
   `--controls-inset`, which would slide the form under the toggle panel; the input goes to
   398px at 1025px and ≥1280px stays byte-identical in layout.
-- **Tier 4 — ≤400px / ≤380px / landscape**: last-resort tightening. The `[ENTER]` menu tag
-  is dropped below 380px; landscape phones get every vertical margin trimmed.
-
-The home screen additionally has **height**-driven tiers, because its content (globe +
-title + five menu rows) is the tallest thing in the app. These must stay mutually
-disjoint — they set the same properties, so any overlap means "whichever block is last in
-the file wins" and the layout grows again instead of shrinking.
-
-This table used to describe a partition that **wasn't actually disjoint**: a 600×500
-landscape phone matched the short-phone tier, the `≤700px`-tall tier and the
-landscape-phone tier all at once, and only rendered correctly because the landscape block
-happened to sit last in the file. The guards now enforce the partition themselves — note
-the explicit "not the short-landscape case" branch on the phone tier:
-
-| Tier | Condition |
-| --- | --- |
-| short phone | `≤600px` wide, `≤800px` / `≤700px` tall, **and** (`≥521px` tall **or** portrait) |
-| landscape phone | `≤520px` tall, landscape |
-| short stacked home | `601–900px` wide, `521–720px` tall |
-| short two-column home | `≥901px` wide, `521–720px` tall |
-
-The `≤800px` / `≤700px` pair still deliberately nests — the second only overrides a few
-values on top of the first — and is commented as such in `App.css` so it doesn't read as
-the same accident. Verified by measuring the winning block at 600×500, 375×500, 320×480,
-700×480, 800×650 and 1000×650.
-
-Everything fits without scrolling from 360×780 up; only 320×568 and 568×320 still scroll,
-which is fine now that `.home-screen` scrolls rather than clipping (see below).
+- **Tier 4 — ≤400px / landscape**: last-resort tightening; landscape phones get every
+  vertical margin trimmed.
 
 Other pieces of the system:
 
@@ -682,11 +668,9 @@ Other pieces of the system:
   `:hover`, which would otherwise stick after a tap. `@media (pointer: coarse)` gives the
   ON/OFF toggles and the Reset View button a 34px minimum height.
   `prefers-reduced-motion` disables the dot pop/ripple and the globe's fan animation.
-- **Never clip, scroll instead**: `.home-screen` is `overflow-y: auto`, and it centers with
-  auto margins on its columns rather than `align-items/justify-content: center` — auto
-  margins collapse to zero once the content is taller than the container, so the top of
-  the page stays reachable. Centering a scroll container the usual way puts the overflow
-  out of reach.
+- **Never clip, scroll instead**: the results screen centres with auto margins rather
+  than `align-items/justify-content: center`, because auto margins collapse to zero once
+  the content is taller than the container, so the top of the page stays reachable.
 - **The globe's speed fan** opens to the left below 820px (`.globe-fan { right: 100% }`),
   since its button sits close to the right edge once the globe column is full-width.
 

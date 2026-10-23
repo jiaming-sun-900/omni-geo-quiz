@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
+import "../home.css";
 
 // The globe drags in Three.js, OrbitControls, d3-geo, topojson-client and the
 // world atlas, roughly three quarters of what used to be the entry bundle. Every
@@ -46,144 +47,180 @@ function GlobePlaceholder() {
   );
 }
 
-// `mode` is the route slug (see routes.js). The US City and US Airport rows
-// open the Blank Map / Satellite chooser instead, whose two options are the
-// slug and the slug + "-satellite".
-const ENTRIES = [
-  { num: "I.", icon: "🗺️ 🇺🇸", name: "US State Quiz", mode: "us-state" },
-  { num: "II.", icon: "📍 🇺🇸", name: "US City Quiz", mode: "us-city", choose: true },
-  { num: "III.", icon: "✈️ 🇺🇸", name: "US Airport Quiz", mode: "us-airport", choose: true },
-  // Modes IV and V are satellite-only (no Blank Map submode), so they skip the
-  // submode-selection modal and launch the game directly.
-  { num: "IV.", icon: "📍 🌍", name: "World City Quiz", mode: "world-city" },
-  { num: "V.", icon: "✈️ 🌍", name: "World Airport Quiz", mode: "world-airport" },
+// The menu, grouped so it can grow past one screen. Each mode is one card with
+// a button per variant; `slug` is the route (see routes.js). The variant
+// buttons replaced a Blank Map / Satellite pop-up, which doesn't scale to more
+// than a handful of modes and hid what each tile led to.
+const SECTIONS = [
+  {
+    title: "United States",
+    modes: [
+      {
+        num: "I.",
+        icon: "🗺️",
+        name: "US State Quiz",
+        blurb: "A red dot on a blank map. Which state is it in?",
+        play: [{ label: "Blank Map", icon: "🗺️", slug: "us-state" }],
+      },
+      {
+        num: "II.",
+        icon: "📍",
+        name: "US City Quiz",
+        blurb: "62 cities: find them on a blank map, or name them from orbit.",
+        play: [
+          { label: "Blank Map", icon: "🗺️", slug: "us-city" },
+          { label: "Satellite", icon: "🛰️", slug: "us-city-satellite" },
+        ],
+      },
+      {
+        num: "III.",
+        icon: "✈️",
+        name: "US Airport Quiz",
+        blurb: "Hubs, runways and terminals, by code, name or city.",
+        play: [
+          { label: "Blank Map", icon: "🗺️", slug: "us-airport" },
+          { label: "Satellite", icon: "🛰️", slug: "us-airport-satellite" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "World",
+    modes: [
+      {
+        num: "IV.",
+        icon: "🌍",
+        name: "World City Quiz",
+        blurb: "54 cities on six continents, seen from above.",
+        play: [{ label: "Satellite", icon: "🛰️", slug: "world-city" }],
+      },
+      {
+        num: "V.",
+        icon: "🛫",
+        name: "World Airport Quiz",
+        blurb: "60 of the world's great airports, from Heathrow to Haneda.",
+        play: [{ label: "Satellite", icon: "🛰️", slug: "world-airport" }],
+      },
+    ],
+  },
 ];
 
+// Today's date as the daily card shows it, e.g. "Fri, Oct 23".
+const today = new Date().toLocaleDateString("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
 export default function HomeScreen({ onSelectMode }) {
-  const [modalMode, setModalMode] = useState(null);
-  const firstOptionRef = useRef(null);
-  const modalRef = useRef(null);
-
-  const handleSelect = (entry) => {
-    if (entry.choose) setModalMode(entry.mode);
-    else onSelectMode(entry.mode);
-  };
-
-  // Close the mode-selection modal (Airport / City) on Escape, and move focus
-  // into it when it opens so the keyboard lands on the first choice instead of
-  // staying on the menu button behind the backdrop. Tab is trapped inside the
-  // dialog — otherwise it walks onto the menu rows behind the backdrop, which
-  // are visually dimmed and unreachable by mouse — and focus returns to the
-  // menu row that opened it, so dismissing with Escape doesn't dump the
-  // keyboard back at the top of the page.
-  useEffect(() => {
-    if (!modalMode) return;
-    const opener = document.activeElement;
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        setModalMode(null);
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const focusables = modalRef.current?.querySelectorAll("button");
-      if (!focusables?.length) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    firstOptionRef.current?.focus();
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      if (opener instanceof HTMLElement && document.contains(opener)) {
-        opener.focus();
-      }
-    };
-  }, [modalMode]);
-
   return (
-    <>
-      <a
-        className="dev-link"
-        href="https://jiaming-sun-900.github.io"
-        target="_blank"
-        rel="noreferrer"
-      >
-        Meet the Dev 👋
-      </a>
-      <div className="home-screen">
-      <div className="home-left">
-        <Suspense fallback={<GlobePlaceholder />}>
-          <Globe />
-        </Suspense>
-      </div>
+    <div className="home-page">
+      <div className="home">
+        <nav className="home-nav" aria-label="Site">
+          <button type="button" className="home-nav-link" onClick={() => onSelectMode("about")}>
+            About
+          </button>
+          <a className="home-nav-link" href="https://jiaming-sun-900.github.io" target="_blank" rel="noreferrer">
+            Meet the Dev 👋
+          </a>
+        </nav>
 
-      <div className="home-right">
-        <h1 className="home-title">Omni Geo Quiz</h1>
+        <section className="home-hero">
+          <div className="home-globe">
+            <Suspense fallback={<GlobePlaceholder />}>
+              <Globe />
+            </Suspense>
+          </div>
 
-        <div className="menu-panel">
-          {ENTRIES.map((e) => (
-            <button
-              key={e.num}
-              className="menu-row"
-              onClick={() => handleSelect(e)}
-            >
-              <span className="menu-num">{e.num}</span>
-              <span className="menu-icon" aria-hidden="true">
-                {e.icon}
-              </span>
-              <span className="menu-name">{e.name}</span>
-              <span className="menu-tag" aria-hidden="true">
-                [ENTER]
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+          <div className="home-intro">
+            <h1 className="home-title">Omni Geo Quiz</h1>
+            <p className="home-tagline">
+              How well do you know the world from above? Name cities and airports
+              from blank maps and satellite images.
+            </p>
 
-      {modalMode && (
-        <div className="modal-backdrop" onClick={() => setModalMode(null)}>
-          <div
-            className="modal-options"
-            ref={modalRef}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Choose a ${modalMode === "us-city" ? "City" : "Airport"} Quiz mode`}
-          >
-            <div className="mode-option">
-              <button
-                ref={firstOptionRef}
-                className="mode-square"
-                onClick={() => onSelectMode(modalMode)}
-              >
-                <span className="mode-icon" aria-hidden="true">
-                  🗺️
-                </span>
-                <span>Blank Map</span>
-              </button>
-            </div>
-            <div className="mode-option">
-              <button
-                className="mode-square"
-                onClick={() => onSelectMode(`${modalMode}-satellite`)}
-              >
-                <span className="mode-icon" aria-hidden="true">
-                  🛰️
-                </span>
-                <span>Satellite</span>
+            {/* The daily challenge arrives in M3 (docs/GOAL.md); until then the
+                card holds its place so the hero doesn't change shape when it does. */}
+            <div className="daily-card">
+              <div className="daily-head">
+                <span className="daily-badge">Today</span>
+                <span className="daily-date">{today}</span>
+              </div>
+              <h2 className="daily-title">Daily Challenge</h2>
+              <p className="daily-text">
+                Ten mixed rounds, the same for everyone today. Share your score
+                and keep your streak going.
+              </p>
+              <button type="button" className="daily-play" disabled>
+                Coming soon
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        </section>
+
+        <main className="home-modes" id="modes">
+          {SECTIONS.map((section) => (
+            <section key={section.title} className="mode-section" aria-labelledby={`sec-${section.title}`}>
+              <h2 className="mode-section-title" id={`sec-${section.title}`}>
+                {section.title}
+              </h2>
+              <ul className="mode-grid">
+                {section.modes.map((m) => (
+                  <li key={m.name} className="mode-card">
+                    <div className="mode-card-head">
+                      <span className="mode-num">{m.num}</span>
+                      <span className="mode-card-icon" aria-hidden="true">
+                        {m.icon}
+                      </span>
+                      <h3 className="mode-name">{m.name}</h3>
+                    </div>
+                    <p className="mode-blurb">{m.blurb}</p>
+                    <div className="mode-play">
+                      {m.play.map((v) => (
+                        <button
+                          key={v.slug}
+                          type="button"
+                          className="mode-play-btn"
+                          onClick={() => onSelectMode(v.slug)}
+                          // The visible label is just "Satellite"; say which quiz.
+                          aria-label={`${m.name}, ${v.label}`}
+                        >
+                          <span aria-hidden="true">{v.icon}</span> {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </main>
+
+        <footer className="home-footer">
+          <p className="home-footer-links">
+            <button type="button" className="home-footer-link" onClick={() => onSelectMode("about")}>
+              About &amp; credits
+            </button>
+            <span aria-hidden="true">·</span>
+            <a className="home-footer-link" href="https://jiaming-sun-900.github.io" target="_blank" rel="noreferrer">
+              Meet the Dev
+            </a>
+            <span aria-hidden="true">·</span>
+            <a
+              className="home-footer-link"
+              href="https://github.com/jiaming-sun-900/omni-geo-quiz"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Source on GitHub
+            </a>
+          </p>
+          <p className="home-footer-credit">
+            Satellite imagery © Google. Planet textures by Solar System Scope, CC BY 4.0.
+            Free, no ads, no tracking.
+          </p>
+        </footer>
+      </div>
+    </div>
   );
 }

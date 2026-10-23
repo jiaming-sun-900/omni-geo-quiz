@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { ROUTES, pageTitle } from "./routes";
 
-// A router small enough to read in one go: the app has eight flat pages and no
+// A router small enough to read in one go: the app has nine flat pages and no
 // parameters, so the History API plus one subscription covers it.
 //
 // The base path (/omni-geo-quiz/) comes from Vite. Paths are compared without
@@ -36,6 +36,11 @@ export function navigate(slug) {
   if (slug === currentSlug()) return;
   window.history.pushState(null, "", BASE + slug);
   listeners.forEach((l) => l());
+  // The home page scrolls, so a mode picked from a card halfway down would
+  // otherwise open the next page (About, notably) at that same offset. Back and
+  // Forward don't come through here, so the browser still restores their
+  // scroll position.
+  window.scrollTo(0, 0);
 }
 
 // Keeps the tab title in step with the page, so history entries and bookmarks

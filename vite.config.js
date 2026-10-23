@@ -41,10 +41,10 @@ export default defineConfig({
   base: "/omni-geo-quiz/",
   // Use Lightning CSS so vendor prefixes are generated correctly. The default
   // esbuild CSS minifier collapses a hand-written `backdrop-filter` +
-  // `-webkit-backdrop-filter` pair down to just the -webkit form, which breaks
-  // the modal blur in Firefox (it only supports the unprefixed property). With
-  // Lightning CSS we author the standard property only and let these targets
-  // emit the -webkit- prefix while keeping the standard one (Firefox 103+).
+  // `-webkit-backdrop-filter` pair down to just the -webkit form, which broke
+  // the old mode chooser's blur in Firefox (it only supports the unprefixed
+  // property). With Lightning CSS we author the standard property only and let
+  // these targets emit the prefix while keeping the standard one.
   css: {
     transformer: "lightningcss",
     lightningcss: {

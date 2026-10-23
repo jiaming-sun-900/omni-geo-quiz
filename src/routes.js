@@ -12,6 +12,7 @@ export const ROUTES = [
   { slug: "us-airport-satellite", title: "US Airport Quiz (Satellite)" },
   { slug: "world-city", title: "World City Quiz" },
   { slug: "world-airport", title: "World Airport Quiz" },
+  { slug: "about", title: "About" },
 ];
 
 // The tab title for a route: the site name alone on the home screen, the page

@@ -1,0 +1,103 @@
+/* The About page: a reading column of cards in the design system's style. Its
+   Home button reuses .home-nav-link from home.css, which the entry bundle
+   always carries. */
+
+.about {
+  width: 100%;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: calc(1rem + var(--safe-top)) calc(1.5rem + var(--safe-right))
+    calc(3rem + var(--safe-bottom)) calc(1.5rem + var(--safe-left));
+  line-height: 1.55;
+}
+
+.about-nav {
+  justify-content: flex-start;
+  margin-bottom: 1.75rem;
+}
+
+.about h1 {
+  margin: 0 0 0.6rem;
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #1a1a2e;
+}
+
+/* Focused on mount for screen readers; no ring for a programmatic focus. */
+.about h1:focus {
+  outline: none;
+}
+
+.about-lead {
+  margin: 0 0 2rem;
+  font-size: 1.15rem;
+}
+
+.about-card {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.4rem;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 5px 5px 0px #111;
+}
+
+.about-card h2 {
+  margin: 0 0 0.6rem;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.about-card p,
+.about-card ul,
+.about-card dl {
+  margin: 0;
+}
+
+.about-card ul {
+  padding-left: 1.2rem;
+}
+
+.about-card li + li {
+  margin-top: 0.45rem;
+}
+
+.about-card dt {
+  font-weight: 700;
+}
+
+.about-card dd {
+  margin: 0 0 0.7rem;
+}
+
+.about-card dd:last-child {
+  margin-bottom: 0;
+}
+
+.about a {
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .about {
+    padding-left: calc(1rem + var(--safe-left));
+    padding-right: calc(1rem + var(--safe-right));
+  }
+
+  .about h1 {
+    font-size: 2rem;
+  }
+
+  .about-lead {
+    font-size: 1.05rem;
+  }
+
+  .about-card {
+    padding: 1.1rem 1.1rem;
+    box-shadow: 4px 4px 0px #111;
+  }
+}

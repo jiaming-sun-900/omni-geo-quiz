@@ -56,7 +56,8 @@ src/
     QuizGame.jsx           the shared engine that runs any mode's ten rounds
     MapStage.jsx  SatelliteStage.jsx   what a round shows
   components/
-    HomeScreen.jsx         menu + sub-mode modal
+    HomeScreen.jsx         hero (globe, daily challenge) + mode cards; styles in src/home.css
+    AboutScreen.jsx        how to play, credits, privacy
     Globe.jsx              Three.js globe, cycles through five planets
     USMap.jsx              shared Albers USA map: state fills, national outline, dot
     ResultsScreen.jsx      score + end-of-game review
