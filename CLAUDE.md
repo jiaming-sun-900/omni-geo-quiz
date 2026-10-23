@@ -602,6 +602,14 @@ The established visual language across all screens. New UI should conform to it.
   with the hard offset shadow; edit the script, not the SVG. It is tuned for 16px: no
   plate, no graticule, islands too small to show are dropped, and the ink swaps to
   off-white under `prefers-color-scheme: dark` so it survives a dark tab bar.
+- **Share images**: `public/og.png` (1200x630 link preview) and
+  `public/apple-touch-icon.png` (180x180, a full square of page colour, since iOS shows
+  transparency as black) are **generated** by `scripts/build-share-images.js` from the
+  favicon's globe at a size where the coastline shows. Link previews need a raster image,
+  so the script renders its SVGs with Playwright, which is deliberately not a project
+  dependency (see the script's header for the one-off install). The meta tags in
+  `index.html` use absolute URLs, because crawlers don't run the app. Post drafts for
+  launch live in `docs/launch.md`.
 - **Buttons** (all interactive buttons): white background, solid black border, hard
   offset shadow `3px 3px 0px #111` (no blur), `border-radius: 12px`. On hover/press the
   button shifts 2px down-right and the shadow reduces, giving a physical press feel.
