@@ -60,6 +60,10 @@
   而且 Google 的条款原则上不允许把图存下来。可选方向：绑卡后在浏览器里实时请求 Google 图
   （不存图，每月有免费额度）、Sentinel-2（免费，但只有 10m 分辨率），或者其他有许可的图源。
 
+- **开放 Wikimedia 的网络访问**（尾翼、机型模式要用）。这个云端环境现在拒绝访问 `commons.wikimedia.org`、
+  `upload.wikimedia.org` 和 `en.wikipedia.org`。在环境设置的 Network access 里把它们加进 Allowed domains，
+  然后开一个新 session。开放之前，新的 session 不要尝试这两个模式，先做别的。
+
 ## 工作方式
 
 - Claude 负责推进，可以派 sub-agent 去做具体的任务。
