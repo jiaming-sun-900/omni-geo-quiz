@@ -64,6 +64,18 @@
   `upload.wikimedia.org` 和 `en.wikipedia.org`。在环境设置的 Network access 里把它们加进 Allowed domains，
   然后开一个新 session。开放之前，新的 session 不要尝试这两个模式，先做别的。
 
+## 待办想法（2026-11-15 记录，有空再做）
+
+来自另一次对话的建议。核心判断：地理测验已经很拥挤（GeoGuessr、Seterra、Worldle），功能多也很难被记住，
+真正重要的是"让人每天回来、愿意分享"的钩子。
+
+- ✅ **每日挑战**、✅ **emoji 分享方块**：M3 已经做了。
+- ⏳ **打磨每日挑战的 UI 和排版**：Jiaming 觉得现在还不够好，以后一起推敲。
+- ⏳ **访问统计**：用 GoatCounter 这类免费、不用 cookie 的工具，否则不知道有没有人在玩。
+  注意：加上以后 About 里"no tracking"那句要改成如实的说法。
+- ⏳ **发帖时讲做它的故事**，不要只贴链接。目标版块：r/geography、r/geoguessr、Show HN。
+  草稿在 `docs/launch.md`，发之前按这个思路改写。
+
 ## 工作方式
 
 - Claude 负责推进，可以派 sub-agent 去做具体的任务。
